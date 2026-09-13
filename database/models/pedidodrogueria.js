@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       pedidoId: DataTypes.INTEGER,
       principioActivoId: DataTypes.INTEGER,
       cantidadSolicitada: DataTypes.STRING,
-      estadoSolicitud: DataTypes.ENUM,
+      estadoSolicitud: DataTypes.ENUM('pendiente', 'enviado_api', 'confirmado_drogueria', 'fallido'),
       respuestaApi: DataTypes.TEXT,
     },
     {

@@ -14,8 +14,8 @@ module.exports = (sequelize, DataTypes) => {
   Pago.init(
     {
       pedidoId: DataTypes.INTEGER,
-      metodoPago: DataTypes.ENUM,
-      estadoPago: DataTypes.ENUM,
+      metodoPago: DataTypes.ENUM('efectivo', 'transferencia'),
+      estadoPago: DataTypes.ENUM('pendiente', 'validado', 'rechazado'),
       comprobanteUrl: DataTypes.STRING,
       fechaValidacion: DataTypes.DATE,
     },

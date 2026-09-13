@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
       pedidoId: DataTypes.INTEGER,
       motivo: DataTypes.STRING,
       descripcion: DataTypes.TEXT,
-      estado: DataTypes.ENUM,
+      estado: DataTypes.ENUM('abierto', 'en_revision', 'resuelto'),
     },
     {
       sequelize,
