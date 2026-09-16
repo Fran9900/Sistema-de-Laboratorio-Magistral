@@ -25,6 +25,6 @@ app.listen(PORT, async(err) => {
      console.error(err.message)
      process.exit(1)
   }
-  await db.sequelize.sync({ force:true }) 
+  await db.sequelize.sync({ alter:true }) 
   console.log(`Backend escuchando en http://localhost:${PORT}`);
 });
