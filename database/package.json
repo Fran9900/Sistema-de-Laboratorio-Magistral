@@ -1,4 +1,12 @@
 {
+  "name": "labowork-database",
+  "version": "1.0.0",
+  "scripts": {
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo:all",
+    "seed": "sequelize-cli db:seed:all",
+    "setup": "sequelize-cli db:migrate && sequelize-cli db:seed:all"
+  },
   "dependencies": {
     "dotenv": "^17.4.2",
     "mysql2": "^3.24.4",

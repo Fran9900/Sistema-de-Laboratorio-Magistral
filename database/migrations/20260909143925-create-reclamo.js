@@ -1,5 +1,5 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Reclamos', {
@@ -10,16 +10,25 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       pedidoId: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Pedidos',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       motivo: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       descripcion: {
         type: Sequelize.TEXT
       },
       estado: {
-        type: Sequelize.ENUM
+        type: Sequelize.ENUM('abierto', 'en_revision', 'resuelto'),
+        defaultValue: 'abierto'
       },
       createdAt: {
         allowNull: false,

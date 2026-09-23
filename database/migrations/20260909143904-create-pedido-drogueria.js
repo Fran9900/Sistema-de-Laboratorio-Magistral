@@ -1,8 +1,8 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
+
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('PedidoDrogueria', {
+    await queryInterface.createTable('PedidoDroguerias', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -10,16 +10,32 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       pedidoId: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Pedidos',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       principioActivoId: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'PrincipioActivos',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
       },
       cantidadSolicitada: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       estadoSolicitud: {
-        type: Sequelize.ENUM
+        type: Sequelize.ENUM('pendiente', 'enviado_api', 'confirmado_drogueria', 'fallido'),
+        defaultValue: 'pendiente'
       },
       respuestaApi: {
         type: Sequelize.TEXT
@@ -35,6 +51,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('PedidoDrogueria');
+    await queryInterface.dropTable('PedidoDroguerias');
   }
 };

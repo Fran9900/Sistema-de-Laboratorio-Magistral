@@ -1,54 +1,86 @@
-"use strict";
-const { Model } = require("sequelize");
+'use strict';
+
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class Pedido extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
       Pedido.belongsTo(models.Receta, {
-        foreignKey: "recetaId",
-        as: "receta",
+        foreignKey: 'recetaId',
+        as: 'receta'
       });
       Pedido.belongsTo(models.PrincipioActivo, {
-        foreignKey: "principioActivoId",
-        as: "principioActivo",
+        foreignKey: 'principioActivoId',
+        as: 'principioActivo'
       });
       Pedido.hasOne(models.Pago, {
-        foreignKey: "pedidoId",
-        as: "pago",
+        foreignKey: 'pedidoId',
+        as: 'pago'
       });
       Pedido.hasMany(models.PedidoDrogueria, {
-        foreignKey: "pedidoId",
-        as: "solicitudesDrogueria",
+        foreignKey: 'pedidoId',
+        as: 'solicitudesDrogueria'
       });
       Pedido.hasMany(models.Reclamo, {
-        foreignKey: "pedidoId",
-        as: "reclamos",
+        foreignKey: 'pedidoId',
+        as: 'reclamos'
       });
     }
   }
+
   Pedido.init(
     {
       recetaId: DataTypes.INTEGER,
       principioActivoId: DataTypes.INTEGER,
-      nombreCliente: DataTypes.STRING,
-      telefonoCliente: DataTypes.STRING,
-      origenPedido: DataTypes.ENUM('mostrador', 'telefono', 'email'),
-      precio: DataTypes.DECIMAL,
-      dosis: DataTypes.STRING,
-      csp: DataTypes.STRING,
-      urgente: DataTypes.BOOLEAN,
-      pinControl: DataTypes.STRING,
-      diaHoraRetiro: DataTypes.DATE,
-      estadoPedido: DataTypes.ENUM('ingresado', 'pendiente_pago', 'en_preparacion', 'listo_retiro', 'entregado'),
+      nombreCliente: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      dniCliente: DataTypes.STRING,
+      telefonoCliente: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      origenPedido: {
+        type: DataTypes.ENUM('mostrador', 'telefono', 'email'),
+        defaultValue: 'mostrador'
+      },
+      precio: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00
+      },
+      dosis: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      csp: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      urgente: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+      },
+      pinControl: {
+        type: DataTypes.STRING(4),
+        allowNull: false
+      },
+      diaHoraRetiro: {
+        type: DataTypes.DATE,
+        allowNull: false
+      },
+      estadoPedido: {
+        type: DataTypes.ENUM('ingresado', 'pendiente_pago', 'en_preparacion', 'listo_retiro', 'entregado', 'cancelado'),
+        defaultValue: 'ingresado'
+      },
+      numeroPreparado: DataTypes.STRING
     },
     {
       sequelize,
-      modelName: "Pedido",
-    },
+      modelName: 'Pedido',
+      tableName: 'Pedidos'
+    }
   );
+
   return Pedido;
 };

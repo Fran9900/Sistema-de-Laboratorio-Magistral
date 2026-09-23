@@ -1,32 +1,38 @@
-"use strict";
-const { Model } = require("sequelize");
+'use strict';
+
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class PrincipioActivo extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
       PrincipioActivo.hasMany(models.Pedido, {
-        foreignKey: "principioActivoId",
-        as: "pedidos",
+        foreignKey: 'principioActivoId',
+        as: 'pedidos'
       });
       PrincipioActivo.hasMany(models.PedidoDrogueria, {
-        foreignKey: "principioActivoId",
-        as: "pedidosDrogueria",
+        foreignKey: 'principioActivoId',
+        as: 'pedidosDrogueria'
       });
     }
   }
+
   PrincipioActivo.init(
     {
-      nombre: DataTypes.STRING,
-      stockDisponible: DataTypes.INTEGER,
+      nombre: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      stockDisponible: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      }
     },
     {
       sequelize,
-      modelName: "PrincipioActivo",
-    },
+      modelName: 'PrincipioActivo',
+      tableName: 'PrincipioActivos'
+    }
   );
+
   return PrincipioActivo;
 };

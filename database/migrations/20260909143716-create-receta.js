@@ -1,8 +1,8 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
+
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Receta', {
+    await queryInterface.createTable('Recetas', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -15,17 +15,22 @@ module.exports = {
       matriculaMedico: {
         type: Sequelize.STRING
       },
+      imagenUrl: {
+        type: Sequelize.STRING
+      },
       selloImagenUrl: {
         type: Sequelize.STRING
       },
       esDigital: {
-        type: Sequelize.BOOLEAN
+        type: Sequelize.BOOLEAN,
+        defaultValue: true
       },
       fechaEmision: {
         type: Sequelize.DATEONLY
       },
       esValida: {
-        type: Sequelize.BOOLEAN
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
       },
       motivoRechazo: {
         type: Sequelize.TEXT
@@ -41,6 +46,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Receta');
+    await queryInterface.dropTable('Recetas');
   }
 };

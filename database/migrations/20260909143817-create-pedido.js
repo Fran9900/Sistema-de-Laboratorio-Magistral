@@ -1,5 +1,5 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Pedidos', {
@@ -10,40 +10,68 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       recetaId: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'Recetas',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
       principioActivoId: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'PrincipioActivos',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
       },
       nombreCliente: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
+      dniCliente: {
         type: Sequelize.STRING
       },
       telefonoCliente: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       origenPedido: {
-        type: Sequelize.ENUM
+        type: Sequelize.ENUM('mostrador', 'telefono', 'email'),
+        defaultValue: 'mostrador'
       },
       precio: {
-        type: Sequelize.DECIMAL
+        type: Sequelize.DECIMAL(10, 2),
+        defaultValue: 0.00
       },
       dosis: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       csp: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
       urgente: {
-        type: Sequelize.BOOLEAN
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
       },
       pinControl: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(4),
+        allowNull: false
       },
       diaHoraRetiro: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        allowNull: false
       },
       estadoPedido: {
-        type: Sequelize.ENUM
+        type: Sequelize.ENUM('ingresado', 'pendiente_pago', 'en_preparacion', 'listo_retiro', 'entregado', 'cancelado'),
+        defaultValue: 'ingresado'
+      },
+      numeroPreparado: {
+        type: Sequelize.STRING
       },
       createdAt: {
         allowNull: false,

@@ -1,30 +1,40 @@
-"use strict";
-const { Model } = require("sequelize");
+'use strict';
+
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class Receta extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      Receta.hasOne(models.Pedido, { foreignKey: "recetaId", as: "pedido" });
+      Receta.hasOne(models.Pedido, {
+        foreignKey: 'recetaId',
+        as: 'pedido'
+      });
     }
   }
+
   Receta.init(
     {
       codigoBarras: DataTypes.STRING,
       matriculaMedico: DataTypes.STRING,
+      imagenUrl: DataTypes.STRING,
       selloImagenUrl: DataTypes.STRING,
-      esDigital: DataTypes.BOOLEAN,
+      esDigital: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+      },
       fechaEmision: DataTypes.DATEONLY,
-      esValida: DataTypes.BOOLEAN,
-      motivoRechazo: DataTypes.TEXT,
+      esValida: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+      },
+      motivoRechazo: DataTypes.TEXT
     },
     {
       sequelize,
-      modelName: "Receta",
-    },
+      modelName: 'Receta',
+      tableName: 'Recetas'
+    }
   );
+
   return Receta;
 };

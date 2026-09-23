@@ -1,11 +1,14 @@
 const path = require('path');
+
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../backend/.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 module.exports = {
   development: {
     username: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || null,
-    database: process.env.DB_NAME || 'farmacia_db',
+    database: process.env.DB_NAME || 'labowork_db',
     host: process.env.DB_HOST || '127.0.0.1',
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql'
@@ -13,7 +16,7 @@ module.exports = {
   test: {
     username: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || null,
-    database: `${process.env.DB_NAME}_test` || 'farmacia_db_test',
+    database: `${process.env.DB_NAME || 'labowork_db'}_test`,
     host: process.env.DB_HOST || '127.0.0.1',
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql'
