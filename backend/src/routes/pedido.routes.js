@@ -1,12 +1,23 @@
-import {Router} from 'express';
-import {validarReceta,verificarStockPrincipioActivo,validarPedidoById} from "../middlewares/pedido.middleware"
-import {createPedido,getPedidos,getPedidoById,registrarPago,entregarPedido} from "../controllers/pedido.controller"
-const route = Router()
+import { Router } from 'express';
+import {
+  validarReceta,
+  verificarStockPrincipioActivo,
+  validarPedidoById
+} from '../middlewares/pedido.middleware.js';
+import {
+  createPedido,
+  getPedidos,
+  getPedidoById,
+  registrarPago,
+  entregarPedido
+} from '../controllers/pedido.controller.js';
 
-route.post("/", [validarReceta,verificarStockPrincipioActivo], createPedido)
-route.post('/pago', registrarPago);
-route.post('/:id/entregar', validarPedidoById, entregarPedido);
-route.get('/', getPedidos)
-route.get('/:id', validarPedidoById, getPedidoById)
+const router = Router();
 
-module.exports = route
+router.post('/', [validarReceta, verificarStockPrincipioActivo], createPedido);
+router.post('/pago', registrarPago);
+router.post('/:id/entregar', validarPedidoById, entregarPedido);
+router.get('/', getPedidos);
+router.get('/:id', validarPedidoById, getPedidoById);
+
+export default router;

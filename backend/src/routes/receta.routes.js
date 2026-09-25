@@ -1,11 +1,18 @@
+import { Router } from 'express';
+import { uploadReceta } from '../middlewares/upload.js';
+import validarRecetaById from '../middlewares/receta.middleware.js';
+import {
+  procesarYValidarReceta,
+  createReceta,
+  getRecetaById,
+  getRecetas
+} from '../controllers/receta.controller.js';
 
-import {createReceta,getRecetaById,getRecetas} from "../controllers/receta.controller"
-import validarRecetaById from "../middlewares/receta.middleware"
-const route = Router()
+const router = Router();
 
-route.post("/",createReceta)
-route.get("/:id", validarRecetaById, getRecetaById)
-route.get("/",getRecetas)
+router.post('/escanear', uploadReceta.single('receta'), procesarYValidarReceta);
+router.post('/', createReceta);
+router.get('/:id', validarRecetaById, getRecetaById);
+router.get('/', getRecetas);
 
-module.exports = route
-
+export default router;

@@ -1,6 +1,6 @@
-import db from "../../../database/models";
-import validarById from "./validarByIdGenerico.middleware";
+import db from '../config/db.js';
+import validarById from './validarByIdGenerico.middleware.js';
 
-const validarRecetaById = validarById(db.Receta)
+const validarRecetaById = validarById(db.Receta);
 
-module.exports = validarRecetaById
+export default validarRecetaById;

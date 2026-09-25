@@ -1,8 +1,8 @@
-import db from "../../../database/models";
-import validarById from "./validarByIdGenerico.middleware";
+import db from '../config/db.js';
+import validarById from './validarByIdGenerico.middleware.js';
 
-const validarReceta = async(req,res,next) => {
-    try {
+export const validarReceta = async (req, res, next) => {
+  try {
     const { recetaId } = req.body;
 
     if (!recetaId) {
@@ -16,21 +16,22 @@ const validarReceta = async(req,res,next) => {
     }
 
     if (!receta.esValida) {
-      return res.status(400).json({ 
-        error: 'No se puede procesar el pedido con una receta inválida.',
-        motivo: receta.motivoRechazo 
+      return res.status(400).json({
+        error: 'No se puede procesar el pedido con una receta invalida.',
+        motivo: receta.motivoRechazo
       });
     }
-    req.recetaValida = receta;
-    next()
-} catch(e){
-    res.status(500).json({ error: 'Error al verificar la receta: ' + e.message })
-    }
-}
 
-const verificarStockPrincipioActivo = async(req,res,next) => {
-    try{
-        const { principioActivoId } = req.body;
+    req.recetaValida = receta;
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: 'Error al verificar la receta: ' + error.message });
+  }
+};
+
+export const verificarStockPrincipioActivo = async (req, res, next) => {
+  try {
+    const { principioActivoId } = req.body;
 
     if (!principioActivoId) {
       return res.status(400).json({ error: 'El campo principioActivoId es obligatorio.' });
@@ -43,12 +44,18 @@ const verificarStockPrincipioActivo = async(req,res,next) => {
     }
 
     req.principioActivo = principioActivo;
-    req.tieneStock = principioActivo.stockDisponible > 0;
+    req.tieneStock = Number(principioActivo.stockDisponible || 0) > 0;
 
-    next()
-    } catch(e){
-        res.status(500).json({ error: 'Error al verificar el stock: ' + e.message })
-    }
-}
-const validarPedidoById = validarById(db.Pedido)
-module.exports = {verificarStockPrincipioActivo,validarReceta,validarPedidoById}
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: 'Error al verificar el stock: ' + error.message });
+  }
+};
+
+export const validarPedidoById = validarById(db.Pedido);
+
+export default {
+  validarReceta,
+  verificarStockPrincipioActivo,
+  validarPedidoById
+};

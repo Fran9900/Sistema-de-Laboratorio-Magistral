@@ -1,94 +1,177 @@
-import db from "../../../database/models";
-import { generarPinUnico } from "../services/pinService";
+import { Op } from 'sequelize';
+import db from '../config/db.js';
+import { generarPinUnico } from '../services/pinService.js';
 
-const createPedido = async(req,res) =>{
-    try{
-        const data = req.body
-        const tieneStock = req.tieneStock
-        const principioActivo = req.principioActivo
-        const fechaBase = new Date();
-        let diaHoraRetiro
-        if (urgente) {
-        diaHoraRetiro = fechaBase
-        } else {
-        const horas = tieneStock ? 24 : 48
-        diaHoraRetiro = new Date(fechaBase.getTime() + horas * 60 * 60 * 1000)
+export const createPedido = async (req, res) => {
+  try {
+    const {
+      recetaId,
+      principioActivoId,
+      nombreCliente,
+      dniCliente,
+      telefonoCliente,
+      origenPedido,
+      precio,
+      dosis,
+      csp,
+      urgente
+    } = req.body;
+
+    if (!nombreCliente || !telefonoCliente || !dosis || !csp) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios para registrar el pedido.' });
+    }
+
+    const tieneStock = req.tieneStock !== undefined ? req.tieneStock : false;
+    const principioActivo = req.principioActivo;
+    const esUrgente = urgente === true || urgente === 'true';
+
+    const fechaBase = new Date();
+    let diaHoraRetiro;
+
+    if (esUrgente) {
+      diaHoraRetiro = fechaBase;
+    } else {
+      const horas = tieneStock ? 24 : 48;
+      diaHoraRetiro = new Date(fechaBase.getTime() + horas * 60 * 60 * 1000);
+    }
+
+    const pinControl = await generarPinUnico(async (pin) => {
+      const existe = await db.Pedido.findOne({
+        where: {
+          pinControl: pin,
+          estadoPedido: { [Op.notIn]: ['entregado', 'cancelado'] }
         }
-        const pinControl = generarPinUnico()
-        const nuevoPedido = await db.Pedido.create({
-            recetaId,
-            principioActivoId,
-            nombreCliente,
-            telefonoCliente,
-            origenPedido,
-            precio,
-            dosis,
-            csp,
-            urgente: urgente ?? false,
-            pinControl,
-            diaHoraRetiro,
-            estadoPedido: origenPedido === 'email' ? 'pendiente_pago' : 'ingresado'
-        })
-        if (!tieneStock) {
-      try {
-        const resDrogueria = await solicitarInsumo({
-          pedidoId: nuevoPedido.id,
-          principioActivoId: principioActivo.id,
-          cantidad: csp || '1 unidad'
-        });
+      });
+      return !!existe;
+    });
 
+    const estadoInicial = origenPedido === 'email' ? 'pendiente_pago' : 'ingresado';
+
+    const nuevoPedido = await db.Pedido.create({
+      recetaId,
+      principioActivoId,
+      nombreCliente,
+      dniCliente: dniCliente || null,
+      telefonoCliente,
+      origenPedido: origenPedido || 'mostrador',
+      precio: precio !== undefined ? Number(precio) : 0.00,
+      dosis,
+      csp,
+      urgente: esUrgente,
+      pinControl,
+      diaHoraRetiro,
+      estadoPedido: estadoInicial
+    });
+
+    if (!tieneStock && principioActivo) {
+      try {
         await db.PedidoDrogueria.create({
           pedidoId: nuevoPedido.id,
           principioActivoId: principioActivo.id,
           cantidadSolicitada: csp || '1 unidad',
-          estadoSolicitud: resDrogueria.exito ? 'enviado_api' : 'fallido',
-          respuestaApi: JSON.stringify(resDrogueria)
+          estadoSolicitud: 'pendiente',
+          respuestaApi: JSON.stringify({
+            origen: 'reposicion_automatica_falta_stock',
+            pedidoId: nuevoPedido.id,
+            principioActivo: principioActivo.nombre,
+            fecha: new Date().toISOString()
+          })
         });
       } catch (errDrogueria) {
-        console.error('Error al conectar con la droguería:', errDrogueria.message);
-        }
+        console.error('Error al registrar pedido a drogueria:', errDrogueria.message);
       }
-      res.status(201).json({mensaje: "Pedido registrado correctamente", pedido: nuevoPedido})
-    } catch(e){
-        res.status(500).json({ error: 'Error al registrar el pedido: ' + e.message })
     }
-}
-const getPedidoById = async(req,res) => {
-    try{
-        const id = req.params.id
-        const pedido = await db.Pedido.findByPk(id,{
-            include: [
+
+    const pedidoCompleto = await db.Pedido.findByPk(nuevoPedido.id, {
+      include: [
         { model: db.Receta, as: 'receta' },
         { model: db.PrincipioActivo, as: 'principioActivo' },
-        { model: db.Pago, as: 'pago' }
+        { model: db.Pago, as: 'pago' },
+        { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' }
       ]
-        })
-        res.status(200).json(pedido)
-    }catch(e){
-        res.status(500).json({error: e.message})
-    }
-}
-const getPedidos = async(req,res) => {
-    try{
-        const pedidos = await db.Pedido.findAll({
-            include: [
-        { model: db.Receta, as: 'receta' },
-        { model: db.PrincipioActivo, as: 'principioActivo' },
-        { model: db.Pago, as: 'pago' }
-      ]
-        })
-        res.status(200).json(pedidos)
-    } catch(e){
-        res.status(500).json({ error: e.message })
-    }
-}
-const registrarPago = async (req, res) => {
+    });
+
+    return res.status(201).json({
+      mensaje: 'Pedido registrado correctamente.',
+      pedido: pedidoCompleto
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Error al registrar el pedido: ' + error.message });
+  }
+};
+
+export const getPedidoById = async (req, res) => {
   try {
-    const { pedidoId, metodoPago, comprobanteUrl } = req.body
+    const { id } = req.params;
+    const pedido = await db.Pedido.findByPk(id, {
+      include: [
+        { model: db.Receta, as: 'receta' },
+        { model: db.PrincipioActivo, as: 'principioActivo' },
+        { model: db.Pago, as: 'pago' },
+        { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' },
+        { model: db.Reclamo, as: 'reclamos' }
+      ]
+    });
 
-    const pedido = await db.Pedido.findByPk(pedidoId)
+    if (!pedido) {
+      return res.status(404).json({ error: `Pedido con id ${id} no encontrado.` });
+    }
 
-    const esEfectivo = metodoPago === 'efectivo'
+    return res.status(200).json(pedido);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getPedidos = async (req, res) => {
+  try {
+    const { estado, dni, pin, urgente } = req.query;
+    const where = {};
+
+    if (estado) {
+      where.estadoPedido = estado;
+    }
+    if (dni) {
+      where.dniCliente = dni;
+    }
+    if (pin) {
+      where.pinControl = pin;
+    }
+    if (urgente !== undefined) {
+      where.urgente = urgente === 'true';
+    }
+
+    const pedidos = await db.Pedido.findAll({
+      where,
+      include: [
+        { model: db.Receta, as: 'receta' },
+        { model: db.PrincipioActivo, as: 'principioActivo' },
+        { model: db.Pago, as: 'pago' },
+        { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' }
+      ],
+      order: [['id', 'DESC']]
+    });
+
+    return res.status(200).json(pedidos);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const registrarPago = async (req, res) => {
+  try {
+    const { pedidoId, metodoPago, comprobanteUrl } = req.body;
+
+    if (!pedidoId || !metodoPago) {
+      return res.status(400).json({ error: 'pedidoId y metodoPago son obligatorios.' });
+    }
+
+    const pedido = await db.Pedido.findByPk(pedidoId);
+    if (!pedido) {
+      return res.status(404).json({ error: 'Pedido no encontrado.' });
+    }
+
+    const esEfectivo = metodoPago === 'efectivo';
 
     const nuevoPago = await db.Pago.create({
       pedidoId,
@@ -96,37 +179,54 @@ const registrarPago = async (req, res) => {
       estadoPago: esEfectivo ? 'validado' : 'pendiente',
       comprobanteUrl: esEfectivo ? null : comprobanteUrl,
       fechaValidacion: esEfectivo ? new Date() : null
-    })
+    });
 
     if (esEfectivo) {
-      await pedido.update({ estadoPedido: 'en_preparacion' })
+      await pedido.update({ estadoPedido: 'en_preparacion' });
     }
 
-     res.status(201).json({
-      mensaje: esEfectivo ? 'Pago presencial registrado y validado.' : 'Comprobante recibido, pendiente de revisión.',
+    return res.status(201).json({
+      mensaje: esEfectivo ? 'Pago presencial registrado y validado.' : 'Comprobante recibido, pendiente de revision.',
       pago: nuevoPago
-    })
-  } catch (e) {
-     res.status(500).json({ error: e.message })
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
-}
-const entregarPedido = async (req, res) => {
-  try {
-    const  id  = req.params.id
-    const { pinIngresado } = req.body
+};
 
-    const pedido = await db.Pedido.findByPk(id)
-    
-    if (pedido.pinControl !== pinIngresado) {
-      return res.status(400).json({ error: 'PIN de control incorrecto. No se puede entregar el producto.' })
+export const entregarPedido = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pinIngresado } = req.body;
+
+    if (!pinIngresado) {
+      return res.status(400).json({ error: 'Debe ingresar el PIN de control para retirar.' });
     }
-    await pedido.update({ estadoPedido: 'entregado' })
-    res.status(200).json({
-      mensaje: 'Producto entregado con éxito.',
+
+    const pedido = await db.Pedido.findByPk(id);
+    if (!pedido) {
+      return res.status(404).json({ error: 'Pedido no encontrado.' });
+    }
+
+    if (pedido.pinControl !== String(pinIngresado).trim()) {
+      return res.status(400).json({ error: 'PIN de control incorrecto. No se puede entregar el producto.' });
+    }
+
+    await pedido.update({ estadoPedido: 'entregado' });
+
+    return res.status(200).json({
+      mensaje: 'Producto entregado con exito.',
       pedido
-    })
-  } catch (e) {
-     res.status(500).json({ e: error.message });
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
-}
-module.exports = {createPedido,getPedidoById, getPedidos,registrarPago,entregarPedido}
+};
+
+export default {
+  createPedido,
+  getPedidoById,
+  getPedidos,
+  registrarPago,
+  entregarPedido
+};
