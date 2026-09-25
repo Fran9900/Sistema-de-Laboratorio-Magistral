@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { validarPagoById } from "../middlewares/pago.middlewares";
+import { validarPagoById } from "../middlewares/pago.middleware.js";
 import {
   cambiarEstadoPago,
   getPagoPorPedido,
   getPagos,
-} from "../controllers/pago.controller";
-import { validarPedidoById } from "../middlewares/pedido.middleware";
+} from "../controllers/pago.controller.js";
+import { validarPedidoById } from "../middlewares/pedido.middleware.js";
 
 const router = Router();
 
