@@ -7,6 +7,13 @@ const __dirname = path.dirname(__filename);
 const databaseDir = path.resolve(__dirname, '../database');
 
 try {
+  try {
+    execSync('npx sequelize-cli db:create', {
+      cwd: databaseDir,
+      stdio: 'pipe'
+    });
+  } catch (createError) {}
+
   console.log('Iniciando ejecucion de migraciones...');
   execSync('npx sequelize-cli db:migrate', {
     cwd: databaseDir,
