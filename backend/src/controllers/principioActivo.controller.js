@@ -2,9 +2,7 @@ import db from "../config/db.js";
 
 export const getPrincipioActivoById = async (req, res) => {
   try {
-    const { id } = req.body;
-      const principioActivo = await db.PrincipioActivo.findByPk(id);
-    res.status(200).json(principioActivo);
+    res.status(200).json(req.recurso)
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -38,9 +36,8 @@ export const registrarPrincipioActivo = async (req, res) => {
 export const actualizarStock = async (req, res) => {
     try {
         const {cantidad} = req.body
-        const { id } = req.params.id
-        const principioActivo = await db.PrincipioActivo.findByPk(id)
-        await principioActivo.update({stockDisponible : cantidad})
+        const principioActivo = req.recurso
+        await principioActivo.update({stockDisponible : Number(cantidad)})
         return res.status(200).json({
         mensaje: `Stock de ${principioActivo.nombre} actualizado correctamente.`,
         principioActivo

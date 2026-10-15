@@ -12,4 +12,5 @@ export const validarCantidad = async (req, res, next) => {
     } catch (error) {
         res.status(500).json({message: "error al validar la cantidad"})
     }
+    next()
 }
