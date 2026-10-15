@@ -1,3 +1,4 @@
+import { Model } from 'sequelize';
 import db from '../config/db.js';
 import { extraerDatosReceta } from '../services/ai/index.js';
 
@@ -143,16 +144,11 @@ export const createReceta = async (req, res) => {
 
 export const getRecetaById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const receta = await db.Receta.findByPk(id, {
+    const receta = req.recurso
+    await receta.reload({
       include: [{ model: db.Pedido, as: 'pedido' }]
     });
-
-    if (!receta) {
-      return res.status(404).json({ error: `Receta con id ${id} no encontrada.` });
-    }
-
-    return res.status(200).json(receta);
+    return res.status(200).json(receta)
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

@@ -5,68 +5,64 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     const fechaActual = new Date();
 
-    // Fecha de hace 10 días (Receta Válida)
+    // Receta válida: Emitida hace 10 días (dentro del plazo legal de 30 días)
     const fechaValida = new Date(fechaActual);
     fechaValida.setDate(fechaActual.getDate() - 10);
 
-    // Fecha de hace 45 días (Receta Vencida - RN-01)
+    // Receta vencida: Emitida hace 45 días (supera la RN-01 de 30 días)
     const fechaVencida = new Date(fechaActual);
     fechaVencida.setDate(fechaActual.getDate() - 45);
 
-    await queryInterface.bulkInsert('recetas', [
+    await queryInterface.bulkInsert('Recetas', [
       {
         id: 1,
-        fechaEmision: fechaValida.toISOString().split('T')[0],
         codigoBarras: '7791234567890',
-        medicoNombre: 'Dr. Roberto Gómez',
-        medicoMatricula: 'MP-45892',
+        matriculaMedico: 'MP-45892',
+        imagenUrl: '/uploads/recetas/receta-demo-1.png',
+        selloImagenUrl: '/uploads/recetas/receta-demo-1-sello.png',
+        esDigital: true,
+        fechaEmision: fechaValida.toISOString().split('T')[0],
         esValida: true,
-        esLegible: true,
         motivoRechazo: null,
-        selloImagenUrl: '/uploads/recetas/receta-demo-1.png',
-        observaciones: 'Tomar 1 cápsula cada 8 horas por 5 días.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
       {
         id: 2,
-        fechaEmision: fechaActual.toISOString().split('T')[0],
         codigoBarras: '7799876543210',
-        medicoNombre: 'Dra. María Elena Walsh',
-        medicoMatricula: 'MN-10293',
+        matriculaMedico: 'MN-10293',
+        imagenUrl: '/uploads/recetas/receta-demo-2.png',
+        selloImagenUrl: '/uploads/recetas/receta-demo-2-sello.png',
+        esDigital: false,
+        fechaEmision: fechaActual.toISOString().split('T')[0],
         esValida: true,
-        esLegible: true,
         motivoRechazo: null,
-        selloImagenUrl: '/uploads/recetas/receta-demo-2.png',
-        observaciones: 'Jarabe pediátrico. Administrar 5ml con comida.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
       {
         id: 3,
-        fechaEmision: fechaVencida.toISOString().split('T')[0],
         codigoBarras: '7795555444333',
-        medicoNombre: 'Dr. Carlos Bilardo',
-        medicoMatricula: 'MP-12345',
+        matriculaMedico: 'MP-12345',
+        imagenUrl: '/uploads/recetas/receta-demo-3.png',
+        selloImagenUrl: null,
+        esDigital: true,
+        fechaEmision: fechaVencida.toISOString().split('T')[0],
         esValida: false,
-        esLegible: true,
         motivoRechazo: 'La receta supera los 30 días de antigüedad legal (RN-01).',
-        selloImagenUrl: '/uploads/recetas/receta-demo-vencida.png',
-        observaciones: 'Receta prescripta hace más de un mes.',
         createdAt: new Date(),
         updatedAt: new Date()
       },
       {
         id: 4,
-        fechaEmision: fechaActual.toISOString().split('T')[0],
         codigoBarras: null,
-        medicoNombre: 'Dr. Desconocido',
-        medicoMatricula: null,
+        matriculaMedico: null,
+        imagenUrl: '/uploads/recetas/receta-demo-4.png',
+        selloImagenUrl: null,
+        esDigital: false,
+        fechaEmision: fechaActual.toISOString().split('T')[0],
         esValida: false,
-        esLegible: false,
-        motivoRechazo: 'Foto borrosa. Datos ilegibles extraídos por IA.',
-        selloImagenUrl: '/uploads/recetas/receta-demo-ilegible.png',
-        observaciones: 'Requiere verificación o carga manual por el operador.',
+        motivoRechazo: 'Foto borrosa. Campos obligatorios no detectados por IA.',
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -74,6 +70,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.bulkDelete('recetas', null, {});
+    await queryInterface.bulkDelete('Recetas', null, {});
   }
 };

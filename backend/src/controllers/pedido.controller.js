@@ -102,8 +102,8 @@ export const createPedido = async (req, res) => {
 
 export const getPedidoById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const pedido = await db.Pedido.findByPk(id, {
+    const pedido = req.recurso;
+    await pedido.reload({
       include: [
         { model: db.Receta, as: 'receta' },
         { model: db.PrincipioActivo, as: 'principioActivo' },
@@ -111,12 +111,7 @@ export const getPedidoById = async (req, res) => {
         { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' },
         { model: db.Reclamo, as: 'reclamos' }
       ]
-    });
-
-    if (!pedido) {
-      return res.status(404).json({ error: `Pedido con id ${id} no encontrado.` });
-    }
-
+    })
     return res.status(200).json(pedido);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -196,17 +191,13 @@ export const registrarPago = async (req, res) => {
 
 export const entregarPedido = async (req, res) => {
   try {
-    const { id } = req.params;
+    const pedido = req.recurso
     const { pinIngresado } = req.body;
 
     if (!pinIngresado) {
       return res.status(400).json({ error: 'Debe ingresar el PIN de control para retirar.' });
     }
 
-    const pedido = await db.Pedido.findByPk(id);
-    if (!pedido) {
-      return res.status(404).json({ error: 'Pedido no encontrado.' });
-    }
 
     if (pedido.pinControl !== String(pinIngresado).trim()) {
       return res.status(400).json({ error: 'PIN de control incorrecto. No se puede entregar el producto.' });
