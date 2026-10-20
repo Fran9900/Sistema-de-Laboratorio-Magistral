@@ -214,10 +214,47 @@ export const entregarPedido = async (req, res) => {
   }
 };
 
+export const cambiarUrgenciaPedido = async (req, res) => {
+  try {
+    const pedido = req.recurso;
+    const { urgente } = req.body;
+
+    if (urgente === undefined) {
+      return res.status(400).json({ error: 'Debe especificar el valor booleano urgente.' });
+    }
+
+    const esUrgente = urgente === true || urgente === 'true';
+    let diaHoraRetiro = pedido.diaHoraRetiro;
+
+    if (esUrgente) {
+      diaHoraRetiro = new Date();
+    } else {
+      const principioActivo = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
+      const tieneStock = principioActivo ? Number(principioActivo.stockDisponible || 0) > 0 : false;
+      const horas = tieneStock ? 24 : 48;
+      const fechaBase = new Date(pedido.createdAt || Date.now());
+      diaHoraRetiro = new Date(fechaBase.getTime() + horas * 60 * 60 * 1000);
+    }
+
+    await pedido.update({
+      urgente: esUrgente,
+      diaHoraRetiro
+    });
+
+    return res.status(200).json({
+      mensaje: esUrgente ? 'Pedido marcado como urgencia medica.' : 'Urgencia removida del pedido.',
+      pedido
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 export default {
   createPedido,
   getPedidoById,
   getPedidos,
   registrarPago,
-  entregarPedido
+  entregarPedido,
+  cambiarUrgenciaPedido
 };
