@@ -52,7 +52,7 @@ export default function SideBySideView({
   });
   const [mostrarModalRechazo, setMostrarModalRechazo] = useState(false);
   const [motivoRechazoSeleccionado, setMotivoRechazoSeleccionado] = useState(
-    "Receta vencida (> 30 días) - RN-01",
+    "Receta vencida (> 30 días)",
   );
   const [motivoDetalle, setMotivoDetalle] = useState("");
   const [enviandoRechazo, setEnviandoRechazo] = useState(false);
@@ -287,7 +287,7 @@ export default function SideBySideView({
           {validacionActual.esValida ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Receta Valida (RN-01)
+              Receta Valida
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
@@ -574,7 +574,7 @@ export default function SideBySideView({
                       className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-4 h-4"
                     />
                     <span className="text-xs font-medium text-slate-800">
-                      Marcar como Urgencia Medica (RN-05)
+                      Marcar como Urgencia Medica
                     </span>
                   </label>
                 </div>
@@ -653,8 +653,8 @@ export default function SideBySideView({
                     }
                     className="w-full border rounded p-2 bg-white font-medium"
                   >
-                    <option value="Receta vencida (> 30 días) - RN-01">
-                      Receta vencida ('+ 30 dias') [RN-01]
+                    <option value="Receta vencida (> 30 días)">
+                      Receta vencida ('+ 30 dias') 
                     </option>
                     <option value="Falta de Firma / Sello / Matrícula Médica">
                       Falta de Firma / Sello / Matrícula Médica

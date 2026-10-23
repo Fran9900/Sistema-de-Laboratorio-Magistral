@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
-import Navbar from './components/common/Navbar.jsx';
-import ScannerModal from './components/recepcion/ScannerModal.jsx';
-import SideBySideView from './components/recepcion/SideBySideView.jsx';
-import TalonarioModal from './components/recepcion/TalonarioModal.jsx';
-import ColaPreparacion from './components/laboratorio/ColaPreparacion.jsx';
-import RecetaViewer from './components/laboratorio/RecetaViewer.jsx';
-import FinalizarPreparadoModal from './components/laboratorio/FinalizarPreparadoModal.jsx';
-import BusquedaCliente from './components/cliente/BusquedaCliente.jsx';
-import { PlusCircle, Search, ClipboardList, ShieldCheck } from 'lucide-react';
+import React, { useState } from "react";
+import Navbar from "./components/common/Navbar.jsx";
+import ScannerModal from "./components/recepcion/ScannerModal.jsx";
+import SideBySideView from "./components/recepcion/SideBySideView.jsx";
+import TalonarioModal from "./components/recepcion/TalonarioModal.jsx";
+import ColaPreparacion from "./components/laboratorio/ColaPreparacion.jsx";
+import RecetaViewer from "./components/laboratorio/RecetaViewer.jsx";
+import FinalizarPreparadoModal from "./components/laboratorio/FinalizarPreparadoModal.jsx";
+import BusquedaCliente from "./components/cliente/BusquedaCliente.jsx";
+import { PlusCircle, Search, ClipboardList, ShieldCheck } from "lucide-react";
+import HistorialRecetas from "./components/recepcion/HistorialRecetas.jsx";
+import ModalDetalleReceta from "./components/recepcion/DetalleRecetaModal.jsx";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('recepcion');
+  const [activeTab, setActiveTab] = useState("recepcion");
   const [scannerAbierto, setScannerAbierto] = useState(false);
   const [recetaActiva, setRecetaActiva] = useState(null);
   const [talonarioAbierto, setTalonarioAbierto] = useState(false);
@@ -32,12 +34,19 @@ export default function App() {
     setRecetaViewerData({ receta, pedido });
   };
 
+  const [recetaSeleccionada, setRecetaSeleccionada] = useState(null);
+
+  const handleVerRecetaDetalle = (receta) => {
+    setRecetaSeleccionada(receta);
+  };
+
+  const handleCerrarModal = () => {
+    setRecetaSeleccionada(null);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <ScannerModal
         isOpen={scannerAbierto}
@@ -66,8 +75,8 @@ export default function App() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-8 py-8">
-        {activeTab === 'recepcion' && (
-          recetaActiva ? (
+        {activeTab === "recepcion" &&
+          (recetaActiva ? (
             <SideBySideView
               recetaData={recetaActiva}
               onVolver={() => setRecetaActiva(null)}
@@ -79,10 +88,15 @@ export default function App() {
                 <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
                   <div className="space-y-1">
                     <p className="font-semibold text-emerald-900">
-                      Pedido registrado con exito: Codigo PIN {pedidoCreadoExito.pedido?.pinControl}
+                      Pedido registrado con exito: Codigo PIN{" "}
+                      {pedidoCreadoExito.pedido?.pinControl}
                     </p>
                     <p>
-                      Cliente: {pedidoCreadoExito.pedido?.nombreCliente} - Plazo de retiro: {new Date(pedidoCreadoExito.pedido?.diaHoraRetiro).toLocaleString()}
+                      Cliente: {pedidoCreadoExito.pedido?.nombreCliente} - Plazo
+                      de retiro:{" "}
+                      {new Date(
+                        pedidoCreadoExito.pedido?.diaHoraRetiro,
+                      ).toLocaleString()}
                     </p>
                   </div>
                   <button
@@ -127,15 +141,19 @@ export default function App() {
                   </span>
                 </div>
               </div>
+              <HistorialRecetas onVerReceta={handleVerRecetaDetalle} />
+              {recetaSeleccionada && (
+                <ModalDetalleReceta
+                  receta={recetaSeleccionada}
+                  onClose={handleCerrarModal}
+                />
+              )}
             </section>
-          )
-        )}
+          ))}
 
-        {activeTab === 'clientes' && (
-          <BusquedaCliente />
-        )}
+        {activeTab === "clientes" && <BusquedaCliente />}
 
-        {activeTab === 'laboratorio' && (
+        {activeTab === "laboratorio" && (
           <ColaPreparacion
             onVerReceta={handleVerReceta}
             onFinalizarPreparado={(pedido) => setPedidoAFinalizar(pedido)}
