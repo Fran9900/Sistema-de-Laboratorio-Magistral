@@ -9,6 +9,7 @@ import pedidoRoutes from './routes/pedido.routes.js';
 import pagoRoutes from './routes/pago.routes.js';
 import principioActivoRoutes from './routes/principioActivo.routes.js';
 import clienteRoutes from './routes/cliente.routes.js';
+import { setupSwagger } from './config/swagger.js';
 
 dotenv.config();
 
@@ -17,6 +18,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+setupSwagger(app);
 
 app.use(cors());
 app.use(express.json());
