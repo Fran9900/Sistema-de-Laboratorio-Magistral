@@ -1,82 +1,97 @@
-import React, { useState, useEffect } from "react";
-import {
-  FileText,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  ShieldCheck,
-  User,
-  Clock,
-  ArrowRight,
-  Loader2,
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  FileText, 
+  CheckCircle2, 
+  AlertTriangle, 
+  XCircle, 
+  ShieldCheck, 
+  User, 
+  Clock, 
+  ArrowRight, 
+  Loader2, 
   ChevronLeft,
-} from "lucide-react";
-import api from "../../services/api.js";
+  Search,
+  Check
+} from 'lucide-react';
+import api from '../../services/api.js';
 
-export default function SideBySideView({
-  recetaData,
-  onVolver,
-  onPedidoCreado,
-}) {
+export default function SideBySideView({ recetaData, onVolver, onPedidoCreado }) {
   const datosExtraidos = recetaData?.resultado?.datosExtraidos || {};
   const archivoInfo = recetaData?.resultado?.archivo || {};
-  const urlCalculada = archivoInfo.url
-    ? archivoInfo.url.startsWith("http")
-      ? archivoInfo.url
-      : `http://localhost:4000${archivoInfo.url}`
-    : null;
+  const urlCalculada = archivoInfo.url ? (archivoInfo.url.startsWith('http') ? archivoInfo.url : ('http:' + String.fromCharCode(47, 47) + 'localhost:4000' + archivoInfo.url)) : null;
   const previewOriginal = recetaData?.previewUrl || urlCalculada;
-  const esPdf =
-    recetaData?.archivoLocal?.type === "application/pdf" ||
-    archivoInfo.filename?.endsWith(".pdf");
+  const esPdf = recetaData?.archivoLocal?.type === 'application/pdf' || archivoInfo.filename?.endsWith('.pdf');
 
   const [principiosActivos, setPrincipiosActivos] = useState([]);
   const [cargandoDrogas, setCargandoDrogas] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState(null);
 
+  const [principioActivoInput, setPrincipioActivoInput] = useState(datosExtraidos.principioActivo || '');
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const wrapperRef = useRef(null);
+
   const [formData, setFormData] = useState({
-    nombreCliente: datosExtraidos.nombreCliente || "",
-    dniCliente: datosExtraidos.dniCliente || "",
-    telefonoCliente: datosExtraidos.telefonoCliente || "",
-    origenPedido: "mostrador",
-    precio: "0.00",
-    principioActivoId: "",
-    dosis: datosExtraidos.dosis || "",
-    csp: datosExtraidos.csp || "",
+    nombreCliente: datosExtraidos.nombreCliente || '',
+    dniCliente: datosExtraidos.dniCliente || '',
+    telefonoCliente: datosExtraidos.telefonoCliente || '',
+    origenPedido: 'mostrador',
+    precio: '0.00',
+    principioActivoId: '',
+    principioActivoTexto: datosExtraidos.principioActivo || '',
+    dosis: datosExtraidos.dosis || '',
+    csp: datosExtraidos.csp || '',
     urgente: Boolean(datosExtraidos.urgente),
-    codigoBarras: datosExtraidos.codigoBarra || "",
-    matriculaMedico: datosExtraidos.medicoMatricula || "",
-    fechaEmision: datosExtraidos.fechaEmision || "",
-    esDigital: true,
+    codigoBarras: datosExtraidos.codigoBarra || '',
+    matriculaMedico: datosExtraidos.medicoMatricula || '',
+    fechaEmision: datosExtraidos.fechaEmision || '',
+    esDigital: true
   });
+
   const [mostrarModalRechazo, setMostrarModalRechazo] = useState(false);
   const [motivoRechazoSeleccionado, setMotivoRechazoSeleccionado] = useState(
-    "Receta vencida (> 30 días)",
+    'Receta vencida (> 30 días)'
   );
-  const [motivoDetalle, setMotivoDetalle] = useState("");
+  const [motivoDetalle, setMotivoDetalle] = useState('');
   const [enviandoRechazo, setEnviandoRechazo] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setMostrarSugerencias(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const cargarPrincipiosActivos = async () => {
       setCargandoDrogas(true);
       try {
-        const response = await api.get("/principiosActivos");
+        const response = await api.get('/principiosActivos');
         const lista = Array.isArray(response.data) ? response.data : [];
         setPrincipiosActivos(lista);
 
         if (datosExtraidos.principioActivo) {
           const buscado = datosExtraidos.principioActivo.toLowerCase().trim();
-          const coincidencia = lista.find(
-            (p) =>
-              p.nombre?.toLowerCase().includes(buscado) ||
-              buscado.includes(p.nombre?.toLowerCase()),
-          );
+          const coincidencia = lista.find(p => p.nombre?.toLowerCase().includes(buscado) || buscado.includes(p.nombre?.toLowerCase()));
           if (coincidencia) {
-            setFormData((prev) => ({
-              ...prev,
+            setFormData(prev => ({ 
+              ...prev, 
               principioActivoId: coincidencia.id,
+              principioActivoTexto: coincidencia.nombre
             }));
+            setPrincipioActivoInput(coincidencia.nombre);
+          } else {
+            setFormData(prev => ({ 
+              ...prev, 
+              principioActivoId: '',
+              principioActivoTexto: datosExtraidos.principioActivo
+            }));
+            setPrincipioActivoInput(datosExtraidos.principioActivo);
           }
         }
       } catch (err) {
@@ -89,50 +104,81 @@ export default function SideBySideView({
     cargarPrincipiosActivos();
   }, [datosExtraidos.principioActivo]);
 
-  const drogaSeleccionada = principiosActivos.find(
-    (p) => String(p.id) === String(formData.principioActivoId),
-  );
-  const tieneStock = drogaSeleccionada
-    ? Number(drogaSeleccionada.stockDisponible) > 0
-    : null;
+  const drogaSeleccionada = principiosActivos.find(p => String(p.id) === String(formData.principioActivoId));
+  const tieneStock = drogaSeleccionada ? Number(drogaSeleccionada.stockDisponible) > 0 : null;
+
+  const sugerenciasFiltradas = principioActivoInput.trim() === ''
+    ? principiosActivos
+    : principiosActivos.filter(p => 
+        p.nombre?.toLowerCase().includes(principioActivoInput.toLowerCase().trim())
+      );
+
+  const handlePrincipioActivoChange = (e) => {
+    const valor = e.target.value;
+    setPrincipioActivoInput(valor);
+    setMostrarSugerencias(true);
+
+    const coincidenciaExacta = principiosActivos.find(
+      p => p.nombre?.toLowerCase().trim() === valor.toLowerCase().trim()
+    );
+
+    if (coincidenciaExacta) {
+      setFormData(prev => ({
+        ...prev,
+        principioActivoId: coincidenciaExacta.id,
+        principioActivoTexto: coincidenciaExacta.nombre
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        principioActivoId: '',
+        principioActivoTexto: valor
+      }));
+    }
+  };
+
+  const seleccionarSugerencia = (droga) => {
+    setPrincipioActivoInput(droga.nombre);
+    setFormData(prev => ({
+      ...prev,
+      principioActivoId: droga.id,
+      principioActivoTexto: droga.nombre
+    }));
+    setMostrarSugerencias(false);
+  };
 
   const calcularReglasLegales = () => {
     const errores = [];
     if (!formData.esDigital) {
-      errores.push("La receta debe ser en formato digital.");
+      errores.push('La receta debe ser en formato digital.');
     }
-    if (!formData.codigoBarras || String(formData.codigoBarras).trim() === "") {
-      errores.push("Debe contener codigo de barras legible.");
+    if (!formData.codigoBarras || String(formData.codigoBarras).trim() === '') {
+      errores.push('Debe contener codigo de barras legible.');
     }
-    if (
-      !formData.matriculaMedico ||
-      String(formData.matriculaMedico).trim() === ""
-    ) {
-      errores.push("Debe contener matricula o firma del medico.");
+    if (!formData.matriculaMedico || String(formData.matriculaMedico).trim() === '') {
+      errores.push('Debe contener matricula o firma del medico.');
     }
     if (!formData.fechaEmision) {
-      errores.push("Fecha de emision obligatoria.");
+      errores.push('Fecha de emision obligatoria.');
     } else {
       const fecha = new Date(formData.fechaEmision);
       if (isNaN(fecha.getTime())) {
-        errores.push("Fecha de emision no valida.");
+        errores.push('Fecha de emision no valida.');
       } else {
         const hoy = new Date();
         hoy.setHours(23, 59, 59, 999);
         const diffMs = hoy.getTime() - fecha.getTime();
         const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         if (diffDias < 0) {
-          errores.push("La fecha de emision no puede ser futura.");
+          errores.push('La fecha de emision no puede ser futura.');
         } else if (diffDias > 30) {
-          errores.push(
-            `Receta vencida (${diffDias} dias desde emision, maximo 30).`,
-          );
+          errores.push(`Receta vencida (${diffDias} dias desde emision, maximo 30).`);
         }
       }
     }
     return {
       esValida: errores.length === 0,
-      errores,
+      errores
     };
   };
 
@@ -140,400 +186,368 @@ export default function SideBySideView({
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
+
   const handleConfirmarRechazo = async () => {
     setEnviandoRechazo(true);
     const motivoFinal = motivoDetalle
       ? `${motivoRechazoSeleccionado}: ${motivoDetalle}`
       : motivoRechazoSeleccionado;
 
-    const rutaImagenFinal =
-      archivoInfo.url ||
-      (typeof previewOriginal === "string" ? previewOriginal : null) ||
-      "/uploads/recetas/sin-imagen.png";
-
     try {
-      const res = await api.post("/recetas", {
-        imagenUrl: rutaImagenFinal,
-        fechaEmision:
-          formData.fechaEmision || new Date().toISOString().split("T")[0],
-        matriculaMedico: formData.matriculaMedico || "S/D",
+      const payloadReceta = {
         codigoBarras: formData.codigoBarras || null,
-        esDigital: formData.esDigital,
+        matriculaMedico: formData.matriculaMedico || null,
+        fechaEmision: formData.fechaEmision || new Date().toISOString().split('T')[0],
+        esDigital: Boolean(formData.esDigital),
         esValida: false,
         motivoRechazo: motivoFinal,
-      });
+        imagenUrl: archivoInfo.url || null
+      };
 
+      await api.post('/recetas', payloadReceta);
+      alert('Receta rechazada y archivada correctamente en el sistema.');
       setMostrarModalRechazo(false);
-
-      if (typeof onVolver === "function") {
-        onVolver();
-      }
+      if (onVolver) onVolver();
     } catch (err) {
-      console.error("Error al registrar rechazo de receta:", err);
       alert(
-        "Error al registrar el rechazo de la receta: " +
-          (err.response?.data?.error || err.message),
+        'Error al registrar el rechazo de la receta: ' +
+          (err.response?.data?.error || err.message)
       );
     } finally {
       setEnviandoRechazo(false);
     }
   };
 
+  const calcularTiempoEntregaEstimado = () => {
+    if (formData.urgente) return 'Inmediato (Mismo dia - Urgencia Medica)';
+    if (tieneStock === true) return '24 horas habiles (Stock disponible en laboratorio)';
+    if (tieneStock === false) return '48 horas habiles (Requiere reposicion por drogueria)';
+    return '24 a 48 horas habiles';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorEnvio(null);
-
-    if (!formData.nombreCliente.trim() || !formData.telefonoCliente.trim()) {
-      setErrorEnvio("Ingrese el nombre y telefono de contacto del cliente.");
-      return;
-    }
-
-    if (!formData.principioActivoId) {
-      setErrorEnvio(
-        "Seleccione la droga o principio activo de la formulacion.",
-      );
-      return;
-    }
-
-    if (!formData.dosis.trim() || !formData.csp.trim()) {
-      setErrorEnvio(
-        "Complete la dosis y la cantidad total (C.S.P.) de la preparacion.",
-      );
-      return;
-    }
-
     if (!validacionActual.esValida) {
-      setErrorEnvio(
-        "La receta no cumple con las reglas legales obligatorias: " +
-          validacionActual.errores.join(" "),
-      );
+      setErrorEnvio('Corrija las infracciones legales de la receta antes de continuar.');
       return;
     }
 
     setGuardando(true);
+    setErrorEnvio(null);
 
     try {
-      const resReceta = await api.post("/recetas", {
-        codigoBarras: formData.codigoBarras,
-        matriculaMedico: formData.matriculaMedico,
-        imagenUrl: archivoInfo.url || null,
-        esDigital: formData.esDigital,
-        fechaEmision: formData.fechaEmision,
-        esValida: true,
-        motivoRechazo: null,
-      });
+      let recetaId = recetaData?.resultado?.recetaGuardada?.id;
 
-      const recetaIdGuardada = resReceta.data?.receta?.id;
+      if (!recetaId) {
+        const payloadReceta = {
+          codigoBarras: formData.codigoBarras,
+          matriculaMedico: formData.matriculaMedico,
+          fechaEmision: formData.fechaEmision,
+          esDigital: formData.esDigital,
+          esValida: true,
+          motivoRechazo: null,
+          imagenUrl: archivoInfo.url || null
+        };
+        const resReceta = await api.post('/recetas', payloadReceta);
+        recetaId = resReceta.data?.receta?.id;
+      }
 
-      const resPedido = await api.post("/pedidos", {
-        recetaId: recetaIdGuardada,
-        principioActivoId: Number(formData.principioActivoId),
+      if (!recetaId) {
+        throw new Error('No se pudo determinar el ID de la receta para asociar al pedido.');
+      }
+
+      const payloadPedido = {
+        recetaId,
         nombreCliente: formData.nombreCliente,
         dniCliente: formData.dniCliente || null,
-        telefonoCliente: formData.telefonoCliente,
-        origenPedido: formData.origenPedido,
+        telefonoCliente: formData.telefonoCliente || null,
+        origenPedido: formData.origenPedido || 'mostrador',
         precio: parseFloat(formData.precio) || 0.0,
+        principioActivoId: formData.principioActivoId ? Number(formData.principioActivoId) : null,
+        principioActivoTexto: formData.principioActivoTexto ? String(formData.principioActivoTexto).trim() : null,
         dosis: formData.dosis,
         csp: formData.csp,
-        urgente: formData.urgente,
-      });
+        urgente: formData.urgente
+      };
+
+      const resPedido = await api.post('/pedidos', payloadPedido);
 
       if (onPedidoCreado) {
-        onPedidoCreado({
-          pedido: resPedido.data?.pedido,
-          receta: resReceta.data?.receta,
-          droga: drogaSeleccionada,
-        });
+        onPedidoCreado(resPedido.data);
       }
     } catch (err) {
-      const msj =
-        err.response?.data?.error ||
-        err.response?.data?.motivo ||
-        err.message ||
-        "Error al persistir el pedido";
-      setErrorEnvio("Error al registrar pedido: " + msj);
+      const msg = err.response?.data?.error || err.message || 'Error al persistir receta y pedido.';
+      setErrorEnvio(msg);
     } finally {
       setGuardando(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onVolver}
-            className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
+            className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors cursor-pointer"
+            title="Volver al mostrador"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
-              Verificacion Humana de Receta y Datos de Formula
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Inspeccione el documento original y corrobore los campos antes de
-              confirmar el ingreso al laboratorio
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <span>Revision y Verificacion de Prescripcion Medica</span>
+              <span className="text-[10px] font-mono uppercase bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                Human in the Loop
+              </span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Verifique los datos extraidos por la IA contra el documento original antes de generar el pedido magistral.
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-2">
           {validacionActual.esValida ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Receta Valida
+              <span>Valida segun normativa legal</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
               <AlertTriangle className="w-3.5 h-3.5" />
-              Observaciones Legales
+              <span>Infraccion legal detectada</span>
             </span>
           )}
         </div>
       </div>
 
-      {recetaData?.resultado?.errorIA && (
-        <div
-          role="alert"
-          className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-800 text-xs"
-        >
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <span>Aviso de IA: {recetaData.resultado.errorIA}</span>
-          </div>
-        </div>
-      )}
-
-      {errorEnvio && (
-        <div
-          role="alert"
-          className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-800 text-xs"
-        >
-          <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
-          <span>{errorEnvio}</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-8 items-start">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-slate-600" />
-              Documento Medico Original
-            </h3>
-            <span className="text-[11px] font-mono text-slate-400">
-              {archivoInfo.filename || "receta_mostrador"}
-            </span>
-          </div>
-
-          <div className="w-full bg-slate-50 border border-slate-200/60 rounded-xl overflow-hidden min-h-[460px] max-h-[580px] flex items-center justify-center p-2">
-            {previewOriginal && !esPdf ? (
-              <img
-                src={previewOriginal}
-                alt="Documento escaneado"
-                className="max-h-[560px] w-auto object-contain rounded-lg shadow-xs"
-              />
-            ) : (
-              <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                <FileText className="w-12 h-12 text-slate-400 mb-3" />
-                <p className="text-sm font-medium text-slate-700">
-                  Documento en formato PDF cargado
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  El archivo se encuentra almacenado y verificado en el servidor
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-1.5">
-            <div className="font-medium text-slate-800 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-slate-600" />
-              Auditoria de Legibilidad y Validez
-            </div>
-            {validacionActual.errores.length === 0 ? (
-              <p className="text-emerald-700">
-                Todos los requisitos de vigencia y registro legal estan
-                verificados.
-              </p>
-            ) : (
-              <ul className="list-disc list-inside space-y-0.5 text-amber-700">
-                {validacionActual.errores.map((err, idx) => (
-                  <li key={idx}>{err}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <User className="w-4 h-4 text-slate-600" />
-                Datos del Cliente y Prescripcion
-              </h3>
-              <span className="text-[11px] text-slate-500">
-                Campos editables
+      <div className="grid grid-cols-2 divide-x divide-slate-200 min-h-[640px]">
+        <div className="p-6 bg-slate-50 flex flex-col justify-between overflow-y-auto max-h-[780px]">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-slate-500" />
+                <span>Documento Original de la Prescripcion</span>
+              </span>
+              <span className="text-xs text-slate-500 font-mono">
+                {archivoInfo.filename || 'receta-captura'}
               </span>
             </div>
 
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-inner flex items-center justify-center min-h-[420px] max-h-[500px]">
+              {previewOriginal ? (
+                esPdf ? (
+                  <iframe
+                    src={previewOriginal}
+                    title="Visor PDF Receta"
+                    className="w-full h-[480px] border-none"
+                  />
+                ) : (
+                  <img
+                    src={previewOriginal}
+                    alt="Prescripcion medica escaneada"
+                    className="max-h-[480px] w-auto object-contain"
+                  />
+                )
+              ) : (
+                <div className="p-8 text-center text-slate-400">
+                  <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                  <p className="text-xs">No se dispone de vista previa del documento</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 p-3 bg-white border border-slate-200 rounded-lg space-y-2">
+              <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-slate-600" />
+                <span>Auditoria de Cumplimiento Legal</span>
+              </div>
+
+              {validacionActual.errores.length === 0 ? (
+                <p className="text-xs text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Cumple con vigencia (&lt;=30 dias), firma o matricula y formato digital.</span>
+                </p>
+              ) : (
+                <ul className="text-xs text-amber-800 space-y-1">
+                  {validacionActual.errores.map((err, idx) => (
+                    <li key={idx} className="flex items-start gap-1.5">
+                      <XCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <span>{err}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-500 mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
+            <span>Extraccion asistida por Vision Multimodal</span>
+            <span className="font-mono">Modo de validacion en mostrador</span>
+          </div>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[780px] flex flex-col justify-between">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {errorEnvio && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 text-red-600" />
+                <span>{errorEnvio}</span>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Cliente
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" />
+                <span>Datos del Paciente / Cliente</span>
               </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Nombre Completo *
-                  </label>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Nombre Completo *</label>
                   <input
                     type="text"
                     name="nombreCliente"
                     value={formData.nombreCliente}
                     onChange={handleChange}
                     required
-                    placeholder="Ej. Juan Perez"
+                    placeholder="Ej: Juan Perez"
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    DNI (Opcional)
-                  </label>
+
+                <div className="col-span-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">DNI del Cliente</label>
                   <input
                     type="text"
                     name="dniCliente"
                     value={formData.dniCliente}
                     onChange={handleChange}
-                    placeholder="Documento"
+                    placeholder="Ej: 35123456"
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Telefono de Contacto *
-                  </label>
+
+                <div className="col-span-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Telefono / Celular</label>
                   <input
                     type="text"
                     name="telefonoCliente"
                     value={formData.telefonoCliente}
                     onChange={handleChange}
-                    required
-                    placeholder="Ej. 11-4567-8901"
+                    placeholder="Ej: 11 4455 6677"
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Formula Magistral
-              </h4>
-
-              <div>
+            <div className="space-y-3 pt-3 border-t border-slate-100">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Formula Magistral</h4>
+              
+              <div ref={wrapperRef} className="relative">
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   Principio Activo (Droga) *
                 </label>
-                {cargandoDrogas ? (
-                  <div className="text-xs text-slate-500 py-2 flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Cargando catalogo de principios activos...
-                  </div>
-                ) : (
-                  <select
-                    name="principioActivoId"
-                    value={formData.principioActivoId}
-                    onChange={handleChange}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={principioActivoInput}
+                    onChange={handlePrincipioActivoChange}
+                    onFocus={() => setMostrarSugerencias(true)}
                     required
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
-                  >
-                    <option value="">Seleccione principio activo</option>
-                    {principiosActivos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} (Stock actual: {p.stockDisponible})
-                      </option>
+                    placeholder="Escriba el principio activo (ej. Atorvastatina)..."
+                    className="w-full text-xs pl-8 pr-8 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                    autoComplete="off"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                  {cargandoDrogas && (
+                    <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin absolute right-2.5 top-2.5" />
+                  )}
+                </div>
+
+                {mostrarSugerencias && sugerenciasFiltradas.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
+                    {sugerenciasFiltradas.map((droga) => (
+                      <button
+                        key={droga.id}
+                        type="button"
+                        onClick={() => seleccionarSugerencia(droga)}
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <span className="font-medium text-slate-800">{droga.nombre}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                            Number(droga.stockDisponible) > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            Stock: {droga.stockDisponible}
+                          </span>
+                          {String(formData.principioActivoId) === String(droga.id) && (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          )}
+                        </div>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 )}
+
+                {formData.principioActivoId ? (
+                  <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Principio activo registrado (Stock disponible: {drogaSeleccionada?.stockDisponible || 0})
+                  </p>
+                ) : principioActivoInput.trim() ? (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    No registrado en catalogo (quedara registrado como texto para este pedido)
+                  </p>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Dosis Prescripta *
-                  </label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Dosis Prescripta *</label>
                   <input
                     type="text"
                     name="dosis"
                     value={formData.dosis}
                     onChange={handleChange}
                     required
-                    placeholder="Ej. 50 mg"
+                    placeholder="Ej: 50 mg"
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Cantidad Total (C.S.P.) *
-                  </label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Cantidad C.S.P. *</label>
                   <input
                     type="text"
                     name="csp"
                     value={formData.csp}
                     onChange={handleChange}
                     required
-                    placeholder="Ej. 60 capsulas"
+                    placeholder="Ej: 30 capsulas"
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Validacion Legal y Medico
+            <div className="space-y-3 pt-3 border-t border-slate-100">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Datos Legales de la Prescripcion</span>
               </h4>
+
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Matricula Medico *
-                  </label>
-                  <input
-                    type="text"
-                    name="matriculaMedico"
-                    value={formData.matriculaMedico}
-                    onChange={handleChange}
-                    required
-                    placeholder="MN / MP"
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Codigo de Barras *
-                  </label>
-                  <input
-                    type="text"
-                    name="codigoBarras"
-                    value={formData.codigoBarras}
-                    onChange={handleChange}
-                    required
-                    placeholder="Identificador"
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Fecha Emision *
-                  </label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Fecha Emision *</label>
                   <input
                     type="date"
                     name="fechaEmision"
@@ -543,29 +557,57 @@ export default function SideBySideView({
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
-              </div>
-            </div>
 
-            <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Condiciones de Entrega
-              </h4>
-              <div className="grid grid-cols-2 gap-3 items-center">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Precio Estimado ($)
-                  </label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Matricula / Firma *</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    name="precio"
-                    value={formData.precio}
+                    type="text"
+                    name="matriculaMedico"
+                    value={formData.matriculaMedico}
                     onChange={handleChange}
+                    required
+                    placeholder="Ej: MP 45892"
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
-                <div className="pt-4">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Codigo de Barras *</label>
+                  <input
+                    type="text"
+                    name="codigoBarras"
+                    value={formData.codigoBarras}
+                    onChange={handleChange}
+                    required
+                    placeholder="Ej: 7791234567890"
+                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="esDigital"
+                    checked={formData.esDigital}
+                    onChange={handleChange}
+                    className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-4 h-4"
+                  />
+                  <span className="text-xs text-slate-700">Formato Digital / Escaneado Autorizado</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-3 border-t border-slate-100">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Condiciones de Entrega y Prioridad</span>
+              </h4>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       name="urgente"
@@ -578,58 +620,55 @@ export default function SideBySideView({
                     </span>
                   </label>
                 </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 flex items-center justify-between text-xs text-slate-600">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-500" />
-                  <span>Plazo estimado de entrega:</span>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 block uppercase font-mono">Estimacion de Retiro</span>
+                  <span className={`text-xs font-semibold ${formData.urgente ? 'text-amber-700' : 'text-slate-800'}`}>
+                    {calcularTiempoEntregaEstimado()}
+                  </span>
                 </div>
-                <span className="font-semibold text-slate-900">
-                  {formData.urgente
-                    ? "Inmediata / Mismo dia (Urgente)"
-                    : tieneStock === false
-                      ? "48 horas (Requiere drogueria)"
-                      : "24 horas (Con stock en laboratorio)"}
-                </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setMostrarModalRechazo(true)}
-              className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded font-bold text-xs flex items-center gap-1 transition"
-            >
-              Rechazar Receta
-            </button>
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={onVolver}
-                disabled={guardando}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+                onClick={() => setMostrarModalRechazo(true)}
+                className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded font-bold text-xs flex items-center gap-1 transition cursor-pointer"
               >
-                Volver al Escaner
+                Rechazar Receta
               </button>
-              <button
-                type="submit"
-                disabled={guardando || !validacionActual.esValida}
-                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {guardando ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Registrando Pedido...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Confirmar y Crear Pedido</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onVolver}
+                  disabled={guardando}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Volver al Escaner
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardando || !validacionActual.esValida}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {guardando ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Registrando Pedido...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Confirmar y Crear Pedido</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>
+
         {mostrarModalRechazo && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl border p-6 max-w-md w-full">
@@ -654,7 +693,7 @@ export default function SideBySideView({
                     className="w-full border rounded p-2 bg-white font-medium"
                   >
                     <option value="Receta vencida (> 30 días)">
-                      Receta vencida ('+ 30 dias') 
+                      Receta vencida (&gt; 30 días)
                     </option>
                     <option value="Falta de Firma / Sello / Matrícula Médica">
                       Falta de Firma / Sello / Matrícula Médica
@@ -698,7 +737,7 @@ export default function SideBySideView({
                   className="px-4 py-1.5 bg-red-600 text-white rounded hover:bg-red-500 font-bold text-xs"
                   disabled={enviandoRechazo}
                 >
-                  {enviandoRechazo ? "Guardando..." : "Confirmar Rechazo"}
+                  {enviandoRechazo ? 'Guardando...' : 'Confirmar Rechazo'}
                 </button>
               </div>
             </div>

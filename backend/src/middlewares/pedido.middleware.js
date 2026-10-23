@@ -31,10 +31,15 @@ export const validarReceta = async (req, res, next) => {
 
 export const verificarStockPrincipioActivo = async (req, res, next) => {
   try {
-    const { principioActivoId } = req.body;
+    const { principioActivoId, principioActivoTexto } = req.body;
 
     if (!principioActivoId) {
-      return res.status(400).json({ error: 'El campo principioActivoId es obligatorio.' });
+      if (principioActivoTexto && String(principioActivoTexto).trim() !== '') {
+        req.principioActivo = null;
+        req.tieneStock = false;
+        return next();
+      }
+      return res.status(400).json({ error: 'El campo principioActivoId o principioActivoTexto es obligatorio.' });
     }
 
     const principioActivo = await db.PrincipioActivo.findByPk(principioActivoId);

@@ -32,6 +32,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       recetaId: DataTypes.INTEGER,
       principioActivoId: DataTypes.INTEGER,
+      principioActivoTexto: DataTypes.STRING,
       nombreCliente: {
         type: DataTypes.STRING,
         allowNull: false

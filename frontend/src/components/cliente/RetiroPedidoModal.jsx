@@ -62,7 +62,7 @@ export default function RetiroPedidoModal({ isOpen, onClose, pedido, onPedidoEnt
                 Entrega de Preparado Magistral
               </h3>
               <p className="text-xs text-slate-500">
-                Validacion de talonario de control (RN-07)
+                Validacion de talonario de control
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export default function RetiroPedidoModal({ isOpen, onClose, pedido, onPedidoEnt
           </div>
           <div className="flex justify-between items-center text-slate-700">
             <span className="text-slate-500">Formula:</span>
-            <span className="font-medium text-slate-900">{pedido.principioActivo?.nombre || 'Personalizada'}</span>
+            <span className="font-medium text-slate-900">{pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Personalizada'}</span>
           </div>
           {pedido.numeroPreparado && (
             <div className="flex justify-between items-center text-slate-700">

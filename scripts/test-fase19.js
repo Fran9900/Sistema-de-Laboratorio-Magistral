@@ -74,7 +74,7 @@ const valCaso4Ilegible = validarReglasLegalesReceta(caso4Ilegible);
 assert.strictEqual(valCaso4Ilegible.esValida, false, 'Caso 4B: Receta con datos clinicos/matricula ausente debe ser rechazada.');
 
 async function simularCicloCompleto() {
-  const pin = await generarPinUnico(async () => true);
+  const pin = await generarPinUnico(async () => false);
   assert.strictEqual(validarFormatoPin(pin), true, 'El PIN generado debe cumplir formato estricto de 4 digitos.');
 
   let estadoPedido = 'ingresado';

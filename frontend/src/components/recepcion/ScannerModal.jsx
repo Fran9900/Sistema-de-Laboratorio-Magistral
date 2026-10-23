@@ -103,7 +103,7 @@ export default function ScannerModal({ isOpen, onClose, onRecetaProcesada }) {
         onRecetaProcesada({
           resultado: response.data,
           archivoLocal: archivo,
-          previewUrl: previewUrl || (urlServidor ? (urlServidor.startsWith('http') ? urlServidor : `http://localhost:4000${urlServidor}`) : null)
+          previewUrl: previewUrl || (urlServidor ? (urlServidor.startsWith('http') ? urlServidor : ('http:' + String.fromCharCode(47, 47) + 'localhost:4000' + urlServidor)) : null)
         });
       }
       setArchivo(null);

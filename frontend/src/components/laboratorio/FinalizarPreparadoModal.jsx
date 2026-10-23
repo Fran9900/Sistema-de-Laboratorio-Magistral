@@ -51,7 +51,7 @@ export default function FinalizarPreparadoModal({ isOpen, onClose, pedido, onPre
     }
   };
 
-  const droga = pedido.principioActivo?.nombre || 'Droga Magistral';
+  const droga = pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Droga Magistral';
 
   return (
     <div
@@ -68,11 +68,8 @@ export default function FinalizarPreparadoModal({ isOpen, onClose, pedido, onPre
             </div>
             <div>
               <h3 id="finalizar-modal-title" className="text-base font-semibold text-slate-900 tracking-tight">
-                Cierre y Finalizacion de Preparado
+                Finalización de Preparado
               </h3>
-              <p className="text-xs text-slate-500">
-                Registro en libro recetario y habilitacion para retiro (RN-09 / ENC-03)
-              </p>
             </div>
           </div>
           <button
@@ -114,20 +111,32 @@ export default function FinalizarPreparadoModal({ isOpen, onClose, pedido, onPre
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-slate-600" />
-              <span>N° de Preparado Fisico (Libro Recetario) *</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-slate-600" />
+                <span>N° de Preparado Fisico (Libro Recetario) *</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setNumeroPreparado(`LP-${new Date().getFullYear()}-${String(pedido.id).padStart(4, '0')}`)}
+                className="text-[11px] text-emerald-700 hover:text-emerald-900 font-medium hover:underline"
+              >
+                Autocompletar sugerido
+              </button>
+            </div>
             <input
               type="text"
               value={numeroPreparado}
               onChange={(e) => setNumeroPreparado(e.target.value)}
               required
-              placeholder="Ej. LP-2026-0842"
+              title="Número de asiento o folio del Libro Recetario oficial del laboratorio"
+              onInvalid={(e) => e.target.setCustomValidity('Por favor, ingrese el número de preparado del Libro Recetario')}
+              onInput={(e) => e.target.setCustomValidity('')}
+              placeholder="Ej. LP-2026-0842 o REC-001"
               className="w-full text-xs font-mono px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
             />
             <p className="text-[11px] text-slate-500">
-              Identificador unico asentado fisicamente en el libro oficial del laboratorio magistral (RN-09).
+              Corresponde al número de folio o asiento asentado en el Libro Copiador/Recetario oficial del laboratorio al elaborar la fórmula.
             </p>
           </div>
 

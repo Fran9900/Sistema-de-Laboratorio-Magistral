@@ -40,7 +40,7 @@ export default function TalonarioModal({ isOpen, onClose, pedidoData }) {
                 Talonario de Control y Retiro
               </h3>
               <p className="text-xs text-slate-500">
-                Comprobante para el cliente (RN-03 / ING-03)
+                Comprobante para el cliente
               </p>
             </div>
           </div>
@@ -123,7 +123,7 @@ export default function TalonarioModal({ isOpen, onClose, pedidoData }) {
 
             <div className="flex items-center justify-between">
               <span className="text-slate-500">Principio Activo:</span>
-              <span className="font-medium text-slate-900">{droga.nombre || 'Formula Magistral'}</span>
+              <span className="font-medium text-slate-900">{droga.nombre || pedido.principioActivoTexto || 'Formula Magistral'}</span>
             </div>
 
             <div className="flex items-center justify-between">

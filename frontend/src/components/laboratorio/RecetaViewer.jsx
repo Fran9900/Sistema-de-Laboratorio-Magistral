@@ -57,7 +57,7 @@ export default function RecetaViewer({ isOpen, onClose, receta, pedido }) {
                 Visor de Receta Medica Original
               </h3>
               <p className="text-xs text-slate-500">
-                Auditoria de formula y prescripcion del facultativo (ENC-04 / RN-12)
+                Auditoria de formula y prescripcion del facultativo
               </p>
             </div>
           </div>

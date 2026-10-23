@@ -324,7 +324,7 @@ export default function BusquedaCliente() {
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
                   <span className="text-slate-500 font-medium">Formula Magistral</span>
                   <p className="text-slate-900 font-semibold">
-                    {pedido.principioActivo?.nombre || 'Formula personalizada'}
+                    {pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Formula personalizada'}
                   </p>
                   <p className="text-slate-600">
                     Dosis: {pedido.dosis} | CSP: {pedido.csp}

@@ -137,7 +137,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                 onChange={(e) => setSoloUrgentes(e.target.checked)}
                 className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4"
               />
-              <span className="font-medium text-rose-800">Solo Urgencias Medicas (RN-05)</span>
+              <span className="font-medium text-rose-800">Solo Urgencias Medicas</span>
             </label>
 
             <select
@@ -182,7 +182,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
               <tbody className="divide-y divide-slate-100">
                 {pedidosOrdenados.map((pedido) => {
                   const fechaRetiro = new Date(pedido.diaHoraRetiro);
-                  const droga = pedido.principioActivo?.nombre || 'Droga Magistral';
+                  const droga = pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Droga Magistral';
                   const esUrgente = pedido.urgente;
 
                   return (

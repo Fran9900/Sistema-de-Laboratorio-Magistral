@@ -7,6 +7,7 @@ export const createPedido = async (req, res) => {
     const {
       recetaId,
       principioActivoId,
+      principioActivoTexto,
       nombreCliente,
       dniCliente,
       telefonoCliente,
@@ -42,14 +43,15 @@ export const createPedido = async (req, res) => {
           estadoPedido: { [Op.notIn]: ['entregado', 'cancelado'] }
         }
       });
-      return !existe;
+      return Boolean(existe);
     });
 
     const estadoInicial = origenPedido === 'email' ? 'pendiente_pago' : 'ingresado';
 
     const nuevoPedido = await db.Pedido.create({
       recetaId,
-      principioActivoId,
+      principioActivoId: principioActivoId ? Number(principioActivoId) : null,
+      principioActivoTexto: principioActivoTexto ? String(principioActivoTexto).trim() : null,
       nombreCliente,
       dniCliente: dniCliente || null,
       telefonoCliente,
