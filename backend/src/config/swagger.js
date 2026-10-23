@@ -16,7 +16,6 @@ const options = {
       },
     ],
   },
-  // Especifica la ruta a los archivos donde escribirás las anotaciones JSDoc
   apis: ['./src/routes/*.js'],
 };
 
@@ -24,5 +23,5 @@ const swaggerSpec = swaggerJSDoc(options);
 
 export const setupSwagger = (app) => {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  console.log('📖 Documentación Swagger disponible en: http://localhost:4000/api-docs');
+  console.log('Documentacion Swagger disponible en: http://localhost:4000/api-docs');
 };

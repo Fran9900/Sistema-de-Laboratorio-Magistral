@@ -12,6 +12,16 @@ import {
 } from 'lucide-react';
 import api from '../../services/api.js';
 
+function formatearFechaTabla(fechaStr) {
+  if (!fechaStr) return 'N/A';
+  const str = String(fechaStr).trim();
+  const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (yyyymmdd) {
+    return `${yyyymmdd[3].padStart(2, '0')}/${yyyymmdd[2].padStart(2, '0')}/${yyyymmdd[1]}`;
+  }
+  return str;
+}
+
 export default function HistorialRecetas({ onVerReceta }) {
   const [recetas, setRecetas] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -40,7 +50,6 @@ export default function HistorialRecetas({ onVerReceta }) {
   }, []);
 
   const recetasFiltradas = recetas.filter((item) => {
-
     const coincideTexto = 
       (item.matriculaMedico || '').toLowerCase().includes(busqueda.toLowerCase()) ||
       (item.codigoBarras || '').toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -60,9 +69,6 @@ export default function HistorialRecetas({ onVerReceta }) {
             <FileText className="w-5 h-5 text-slate-600" />
             Historial de Recetas Recientes
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Registro y auditoría de recetas procesadas y rechazadas en mostrador
-          </p>
         </div>
 
         <button
@@ -93,7 +99,7 @@ export default function HistorialRecetas({ onVerReceta }) {
           className="text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 text-slate-700 font-medium"
         >
           <option value="todos">Todos los Estados</option>
-          <option value="validas">Solo Válidas (RN-01)</option>
+          <option value="validas">Solo Válidas</option>
           <option value="rechazadas">Solo Rechazadas</option>
         </select>
       </div>
@@ -133,7 +139,7 @@ export default function HistorialRecetas({ onVerReceta }) {
                     #{r.id}
                   </td>
                   <td className="py-3 px-3">
-                    {r.fechaEmision ? r.fechaEmision : 'N/A'}
+                    {formatearFechaTabla(r.fechaEmision)}
                   </td>
                   <td className="py-3 px-3 font-medium text-slate-800">
                     {r.matriculaMedico || 'S/D'}
@@ -156,7 +162,7 @@ export default function HistorialRecetas({ onVerReceta }) {
                   </td>
                   <td className="py-3 px-3 max-w-xs truncate text-slate-500" title={r.motivoRechazo || ''}>
                     {r.esValida 
-                      ? 'Conforme auditoría (RN-01)' 
+                      ? 'Conforme auditoría' 
                       : (r.motivoRechazo || 'Rechazo directo en mostrador')}
                   </td>
                   <td className="py-3 px-3 text-right">

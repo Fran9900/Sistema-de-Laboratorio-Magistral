@@ -15,6 +15,58 @@ import {
 } from 'lucide-react';
 import api from '../../services/api.js';
 
+function parsearFechaAObjeto(fechaStr) {
+  if (!fechaStr) return null;
+  const str = String(fechaStr).trim();
+  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyy) {
+    const dia = parseInt(ddmmyyyy[1], 10);
+    const mes = parseInt(ddmmyyyy[2], 10) - 1;
+    const anio = parseInt(ddmmyyyy[3], 10);
+    const d = new Date(anio, mes, dia);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (yyyymmdd) {
+    const anio = parseInt(yyyymmdd[1], 10);
+    const mes = parseInt(yyyymmdd[2], 10) - 1;
+    const dia = parseInt(yyyymmdd[3], 10);
+    const d = new Date(anio, mes, dia);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatearADiaMesAnio(fechaStr) {
+  if (!fechaStr) return '';
+  const str = String(fechaStr).trim();
+  const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (yyyymmdd) {
+    const dia = yyyymmdd[3].padStart(2, '0');
+    const mes = yyyymmdd[2].padStart(2, '0');
+    const anio = yyyymmdd[1];
+    return `${dia}/${mes}/${anio}`;
+  }
+  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyy) {
+    const dia = ddmmyyyy[1].padStart(2, '0');
+    const mes = ddmmyyyy[2].padStart(2, '0');
+    const anio = ddmmyyyy[3];
+    return `${dia}/${mes}/${anio}`;
+  }
+  return str;
+}
+
+function formatearAISO(fechaStr) {
+  const d = parsearFechaAObjeto(fechaStr);
+  if (!d) return fechaStr;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+}
+
 export default function SideBySideView({ recetaData, onVolver, onPedidoCreado }) {
   const datosExtraidos = recetaData?.resultado?.datosExtraidos || {};
   const archivoInfo = recetaData?.resultado?.archivo || {};
@@ -44,7 +96,7 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
     urgente: Boolean(datosExtraidos.urgente),
     codigoBarras: datosExtraidos.codigoBarra || '',
     matriculaMedico: datosExtraidos.medicoMatricula || '',
-    fechaEmision: datosExtraidos.fechaEmision || '',
+    fechaEmision: formatearADiaMesAnio(datosExtraidos.fechaEmision || ''),
     esDigital: true
   });
 
@@ -161,16 +213,16 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
     if (!formData.fechaEmision) {
       errores.push('Fecha de emision obligatoria.');
     } else {
-      const fecha = new Date(formData.fechaEmision);
-      if (isNaN(fecha.getTime())) {
-        errores.push('Fecha de emision no valida.');
+      const fecha = parsearFechaAObjeto(formData.fechaEmision);
+      if (!fecha) {
+        errores.push('Fecha de emision no valida (use formato dia/mes/año).');
       } else {
         const hoy = new Date();
         hoy.setHours(23, 59, 59, 999);
         const diffMs = hoy.getTime() - fecha.getTime();
         const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         if (diffDias < 0) {
-          errores.push('La fecha de emision no puede ser futura.');
+          errores.push('La fecha de emision no puede ser posterior a la fecha actual.');
         } else if (diffDias > 30) {
           errores.push(`Receta vencida (${diffDias} dias desde emision, maximo 30).`);
         }
@@ -202,7 +254,7 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
       const payloadReceta = {
         codigoBarras: formData.codigoBarras || null,
         matriculaMedico: formData.matriculaMedico || null,
-        fechaEmision: formData.fechaEmision || new Date().toISOString().split('T')[0],
+        fechaEmision: formatearAISO(formData.fechaEmision) || new Date().toISOString().split('T')[0],
         esDigital: Boolean(formData.esDigital),
         esValida: false,
         motivoRechazo: motivoFinal,
@@ -247,7 +299,7 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
         const payloadReceta = {
           codigoBarras: formData.codigoBarras,
           matriculaMedico: formData.matriculaMedico,
-          fechaEmision: formData.fechaEmision,
+          fechaEmision: formatearAISO(formData.fechaEmision),
           esDigital: formData.esDigital,
           esValida: true,
           motivoRechazo: null,
@@ -301,15 +353,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <span>Revision y Verificacion de Prescripcion Medica</span>
-              <span className="text-[10px] font-mono uppercase bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
-                Human in the Loop
-              </span>
+            <h3 className="text-base font-semibold text-slate-900">
+              Verificación
             </h3>
-            <p className="text-xs text-slate-500">
-              Verifique los datos extraidos por la IA contra el documento original antes de generar el pedido magistral.
-            </p>
           </div>
         </div>
 
@@ -547,14 +593,16 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Fecha Emision *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Fecha Emisión (día/mes/año) *</label>
                   <input
-                    type="date"
+                    type="text"
                     name="fechaEmision"
                     value={formData.fechaEmision}
                     onChange={handleChange}
                     required
-                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    className="w-full text-xs font-mono px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   />
                 </div>
 

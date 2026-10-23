@@ -13,7 +13,6 @@ import {
 export default function ModalDetalleReceta({ receta, onClose }) {
   if (!receta) return null;
 
-  // Formatear la URL de la imagen de manera segura
   const urlImagen = receta.imagenUrl
     ? receta.imagenUrl.startsWith('http')
       ? receta.imagenUrl
@@ -23,8 +22,6 @@ export default function ModalDetalleReceta({ receta, onClose }) {
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        
-        {/* Cabecera del Modal */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-slate-100 text-slate-700 rounded-xl">
@@ -48,10 +45,7 @@ export default function ModalDetalleReceta({ receta, onClose }) {
           </button>
         </div>
 
-        {/* Cuerpo del Modal */}
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          
-          {/* Visualizador de la Imagen Original */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-col items-center justify-center min-h-[320px] max-h-[420px]">
             {urlImagen ? (
               <img
@@ -68,10 +62,7 @@ export default function ModalDetalleReceta({ receta, onClose }) {
             )}
           </div>
 
-          {/* Ficha de Información y Estado */}
           <div className="space-y-4 text-xs">
-            
-            {/* Badge de Estado Legal */}
             <div className="p-3.5 rounded-xl border flex items-center justify-between" style={{
               backgroundColor: receta.esValida ? '#f0fdf4' : '#fef2f2',
               borderColor: receta.esValida ? '#bbf7d0' : '#fecaca'
@@ -80,7 +71,7 @@ export default function ModalDetalleReceta({ receta, onClose }) {
               {receta.esValida ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Válida (RN-01)
+                  Válida
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold bg-rose-100 text-rose-800">
@@ -90,7 +81,6 @@ export default function ModalDetalleReceta({ receta, onClose }) {
               )}
             </div>
 
-            {/* Datos de la Prescripción */}
             <div className="space-y-2.5 bg-slate-50/80 p-4 rounded-xl border border-slate-100 text-slate-700">
               <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                 <span className="text-slate-500 flex items-center gap-1.5">
@@ -120,7 +110,6 @@ export default function ModalDetalleReceta({ receta, onClose }) {
               </div>
             </div>
 
-            {/* Motivo de Rechazo u Observaciones */}
             {!receta.esValida && receta.motivoRechazo && (
               <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1 text-rose-900">
                 <div className="font-semibold flex items-center gap-1.5 text-rose-800">
@@ -141,7 +130,6 @@ export default function ModalDetalleReceta({ receta, onClose }) {
           </div>
         </div>
 
-        {/* Pie del Modal */}
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end">
           <button
             onClick={onClose}

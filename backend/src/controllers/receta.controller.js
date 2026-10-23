@@ -2,6 +2,39 @@ import { Model } from 'sequelize';
 import db from '../config/db.js';
 import { extraerDatosReceta } from '../services/ai/index.js';
 
+export function parsearFecha(fechaStr) {
+  if (!fechaStr) return null;
+  if (fechaStr instanceof Date) return fechaStr;
+  const str = String(fechaStr).trim();
+  const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyy) {
+    const dia = parseInt(ddmmyyyy[1], 10);
+    const mes = parseInt(ddmmyyyy[2], 10) - 1;
+    const anio = parseInt(ddmmyyyy[3], 10);
+    const d = new Date(anio, mes, dia);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (yyyymmdd) {
+    const anio = parseInt(yyyymmdd[1], 10);
+    const mes = parseInt(yyyymmdd[2], 10) - 1;
+    const dia = parseInt(yyyymmdd[3], 10);
+    const d = new Date(anio, mes, dia);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function formatearAISO(fechaStr) {
+  const d = parsearFecha(fechaStr);
+  if (!d) return fechaStr;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+}
+
 export function validarReglasLegalesReceta(datos = {}) {
   const errores = [];
 
@@ -23,8 +56,8 @@ export function validarReglasLegalesReceta(datos = {}) {
   if (!datos.fechaEmision) {
     errores.push('La fecha de emision de la receta es obligatoria.');
   } else {
-    const fecha = new Date(datos.fechaEmision);
-    if (isNaN(fecha.getTime())) {
+    const fecha = parsearFecha(datos.fechaEmision);
+    if (!fecha || isNaN(fecha.getTime())) {
       errores.push('La fecha de emision de la receta no es valida.');
     } else {
       const hoy = new Date();
@@ -134,7 +167,7 @@ export const createReceta = async (req, res) => {
       imagenUrl: data.imagenUrl || null,
       selloImagenUrl: data.selloImagenUrl || null,
       esDigital: data.esDigital !== undefined ? Boolean(data.esDigital) : true,
-      fechaEmision: data.fechaEmision || null,
+      fechaEmision: data.fechaEmision ? formatearAISO(data.fechaEmision) : null,
       esValida: Boolean(esValida),
       motivoRechazo: motivoRechazo || null
     });

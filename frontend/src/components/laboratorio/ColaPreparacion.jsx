@@ -171,6 +171,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                 <tr className="border-b border-slate-200/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   <th className="py-3 px-3">Prioridad</th>
                   <th className="py-3 px-3">Orden #</th>
+                  <th className="py-3 px-3">PIN Control</th>
                   <th className="py-3 px-3">Paciente</th>
                   <th className="py-3 px-3">Formula Magistral</th>
                   <th className="py-3 px-3">Dosis / CSP</th>
@@ -208,6 +209,11 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                         #{pedido.id}
                       </td>
                       <td className="py-3 px-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-100 text-slate-800 border border-slate-200 tracking-wider">
+                          {pedido.pinControl || '----'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
                         <div className="font-medium text-slate-900">{pedido.nombreCliente}</div>
                         <div className="text-[11px] text-slate-400">{pedido.telefonoCliente}</div>
                       </td>
@@ -220,7 +226,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                       </td>
                       <td className="py-3 px-3">
                         <div className="font-semibold text-slate-900">
-                          {fechaRetiro.toLocaleDateString()}
+                          {fechaRetiro.toLocaleDateString('es-AR')}
                         </div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
