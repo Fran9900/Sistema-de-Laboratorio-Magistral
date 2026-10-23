@@ -1,24 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  ShieldCheck, 
-  User, 
-  Clock, 
-  ArrowRight, 
-  Loader2, 
-  ChevronLeft 
-} from 'lucide-react';
-import api from '../../services/api.js';
+import React, { useState, useEffect } from "react";
+import {
+  FileText,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  ShieldCheck,
+  User,
+  Clock,
+  ArrowRight,
+  Loader2,
+  ChevronLeft,
+} from "lucide-react";
+import api from "../../services/api.js";
 
-export default function SideBySideView({ recetaData, onVolver, onPedidoCreado }) {
+export default function SideBySideView({
+  recetaData,
+  onVolver,
+  onPedidoCreado,
+}) {
   const datosExtraidos = recetaData?.resultado?.datosExtraidos || {};
   const archivoInfo = recetaData?.resultado?.archivo || {};
-  const urlCalculada = archivoInfo.url ? (archivoInfo.url.startsWith('http') ? archivoInfo.url : `http://localhost:4000${archivoInfo.url}`) : null;
+  const urlCalculada = archivoInfo.url
+    ? archivoInfo.url.startsWith("http")
+      ? archivoInfo.url
+      : `http://localhost:4000${archivoInfo.url}`
+    : null;
   const previewOriginal = recetaData?.previewUrl || urlCalculada;
-  const esPdf = recetaData?.archivoLocal?.type === 'application/pdf' || archivoInfo.filename?.endsWith('.pdf');
+  const esPdf =
+    recetaData?.archivoLocal?.type === "application/pdf" ||
+    archivoInfo.filename?.endsWith(".pdf");
 
   const [principiosActivos, setPrincipiosActivos] = useState([]);
   const [cargandoDrogas, setCargandoDrogas] = useState(false);
@@ -26,34 +36,47 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
   const [errorEnvio, setErrorEnvio] = useState(null);
 
   const [formData, setFormData] = useState({
-    nombreCliente: datosExtraidos.nombreCliente || '',
-    dniCliente: datosExtraidos.dniCliente || '',
-    telefonoCliente: datosExtraidos.telefonoCliente || '',
-    origenPedido: 'mostrador',
-    precio: '0.00',
-    principioActivoId: '',
-    dosis: datosExtraidos.dosis || '',
-    csp: datosExtraidos.csp || '',
+    nombreCliente: datosExtraidos.nombreCliente || "",
+    dniCliente: datosExtraidos.dniCliente || "",
+    telefonoCliente: datosExtraidos.telefonoCliente || "",
+    origenPedido: "mostrador",
+    precio: "0.00",
+    principioActivoId: "",
+    dosis: datosExtraidos.dosis || "",
+    csp: datosExtraidos.csp || "",
     urgente: Boolean(datosExtraidos.urgente),
-    codigoBarras: datosExtraidos.codigoBarra || '',
-    matriculaMedico: datosExtraidos.medicoMatricula || '',
-    fechaEmision: datosExtraidos.fechaEmision || '',
-    esDigital: true
+    codigoBarras: datosExtraidos.codigoBarra || "",
+    matriculaMedico: datosExtraidos.medicoMatricula || "",
+    fechaEmision: datosExtraidos.fechaEmision || "",
+    esDigital: true,
   });
+  const [mostrarModalRechazo, setMostrarModalRechazo] = useState(false);
+  const [motivoRechazoSeleccionado, setMotivoRechazoSeleccionado] = useState(
+    "Receta vencida (> 30 días) - RN-01",
+  );
+  const [motivoDetalle, setMotivoDetalle] = useState("");
+  const [enviandoRechazo, setEnviandoRechazo] = useState(false);
 
   useEffect(() => {
     const cargarPrincipiosActivos = async () => {
       setCargandoDrogas(true);
       try {
-        const response = await api.get('/principiosActivos');
+        const response = await api.get("/principiosActivos");
         const lista = Array.isArray(response.data) ? response.data : [];
         setPrincipiosActivos(lista);
 
         if (datosExtraidos.principioActivo) {
           const buscado = datosExtraidos.principioActivo.toLowerCase().trim();
-          const coincidencia = lista.find(p => p.nombre?.toLowerCase().includes(buscado) || buscado.includes(p.nombre?.toLowerCase()));
+          const coincidencia = lista.find(
+            (p) =>
+              p.nombre?.toLowerCase().includes(buscado) ||
+              buscado.includes(p.nombre?.toLowerCase()),
+          );
           if (coincidencia) {
-            setFormData(prev => ({ ...prev, principioActivoId: coincidencia.id }));
+            setFormData((prev) => ({
+              ...prev,
+              principioActivoId: coincidencia.id,
+            }));
           }
         }
       } catch (err) {
@@ -66,41 +89,50 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
     cargarPrincipiosActivos();
   }, [datosExtraidos.principioActivo]);
 
-  const drogaSeleccionada = principiosActivos.find(p => String(p.id) === String(formData.principioActivoId));
-  const tieneStock = drogaSeleccionada ? Number(drogaSeleccionada.stockDisponible) > 0 : null;
+  const drogaSeleccionada = principiosActivos.find(
+    (p) => String(p.id) === String(formData.principioActivoId),
+  );
+  const tieneStock = drogaSeleccionada
+    ? Number(drogaSeleccionada.stockDisponible) > 0
+    : null;
 
   const calcularReglasLegales = () => {
     const errores = [];
     if (!formData.esDigital) {
-      errores.push('La receta debe ser en formato digital.');
+      errores.push("La receta debe ser en formato digital.");
     }
-    if (!formData.codigoBarras || String(formData.codigoBarras).trim() === '') {
-      errores.push('Debe contener codigo de barras legible.');
+    if (!formData.codigoBarras || String(formData.codigoBarras).trim() === "") {
+      errores.push("Debe contener codigo de barras legible.");
     }
-    if (!formData.matriculaMedico || String(formData.matriculaMedico).trim() === '') {
-      errores.push('Debe contener matricula o firma del medico.');
+    if (
+      !formData.matriculaMedico ||
+      String(formData.matriculaMedico).trim() === ""
+    ) {
+      errores.push("Debe contener matricula o firma del medico.");
     }
     if (!formData.fechaEmision) {
-      errores.push('Fecha de emision obligatoria.');
+      errores.push("Fecha de emision obligatoria.");
     } else {
       const fecha = new Date(formData.fechaEmision);
       if (isNaN(fecha.getTime())) {
-        errores.push('Fecha de emision no valida.');
+        errores.push("Fecha de emision no valida.");
       } else {
         const hoy = new Date();
         hoy.setHours(23, 59, 59, 999);
         const diffMs = hoy.getTime() - fecha.getTime();
         const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         if (diffDias < 0) {
-          errores.push('La fecha de emision no puede ser futura.');
+          errores.push("La fecha de emision no puede ser futura.");
         } else if (diffDias > 30) {
-          errores.push(`Receta vencida (${diffDias} dias desde emision, maximo 30).`);
+          errores.push(
+            `Receta vencida (${diffDias} dias desde emision, maximo 30).`,
+          );
         }
       }
     }
     return {
       esValida: errores.length === 0,
-      errores
+      errores,
     };
   };
 
@@ -108,10 +140,48 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
+  };
+  const handleConfirmarRechazo = async () => {
+    setEnviandoRechazo(true);
+    const motivoFinal = motivoDetalle
+      ? `${motivoRechazoSeleccionado}: ${motivoDetalle}`
+      : motivoRechazoSeleccionado;
+
+    const rutaImagenFinal =
+      archivoInfo.url ||
+      (typeof previewOriginal === "string" ? previewOriginal : null) ||
+      "/uploads/recetas/sin-imagen.png";
+
+    try {
+      const res = await api.post("/recetas", {
+        imagenUrl: rutaImagenFinal,
+        fechaEmision:
+          formData.fechaEmision || new Date().toISOString().split("T")[0],
+        matriculaMedico: formData.matriculaMedico || "S/D",
+        codigoBarras: formData.codigoBarras || null,
+        esDigital: formData.esDigital,
+        esValida: false,
+        motivoRechazo: motivoFinal,
+      });
+
+      setMostrarModalRechazo(false);
+
+      if (typeof onVolver === "function") {
+        onVolver();
+      }
+    } catch (err) {
+      console.error("Error al registrar rechazo de receta:", err);
+      alert(
+        "Error al registrar el rechazo de la receta: " +
+          (err.response?.data?.error || err.message),
+      );
+    } finally {
+      setEnviandoRechazo(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -119,63 +189,74 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
     setErrorEnvio(null);
 
     if (!formData.nombreCliente.trim() || !formData.telefonoCliente.trim()) {
-      setErrorEnvio('Ingrese el nombre y telefono de contacto del cliente.');
+      setErrorEnvio("Ingrese el nombre y telefono de contacto del cliente.");
       return;
     }
 
     if (!formData.principioActivoId) {
-      setErrorEnvio('Seleccione la droga o principio activo de la formulacion.');
+      setErrorEnvio(
+        "Seleccione la droga o principio activo de la formulacion.",
+      );
       return;
     }
 
     if (!formData.dosis.trim() || !formData.csp.trim()) {
-      setErrorEnvio('Complete la dosis y la cantidad total (C.S.P.) de la preparacion.');
+      setErrorEnvio(
+        "Complete la dosis y la cantidad total (C.S.P.) de la preparacion.",
+      );
       return;
     }
 
     if (!validacionActual.esValida) {
-      setErrorEnvio('La receta no cumple con las reglas legales obligatorias: ' + validacionActual.errores.join(' '));
+      setErrorEnvio(
+        "La receta no cumple con las reglas legales obligatorias: " +
+          validacionActual.errores.join(" "),
+      );
       return;
     }
 
     setGuardando(true);
 
     try {
-      const resReceta = await api.post('/recetas', {
+      const resReceta = await api.post("/recetas", {
         codigoBarras: formData.codigoBarras,
         matriculaMedico: formData.matriculaMedico,
         imagenUrl: archivoInfo.url || null,
         esDigital: formData.esDigital,
         fechaEmision: formData.fechaEmision,
         esValida: true,
-        motivoRechazo: null
+        motivoRechazo: null,
       });
 
       const recetaIdGuardada = resReceta.data?.receta?.id;
 
-      const resPedido = await api.post('/pedidos', {
+      const resPedido = await api.post("/pedidos", {
         recetaId: recetaIdGuardada,
         principioActivoId: Number(formData.principioActivoId),
         nombreCliente: formData.nombreCliente,
         dniCliente: formData.dniCliente || null,
         telefonoCliente: formData.telefonoCliente,
         origenPedido: formData.origenPedido,
-        precio: parseFloat(formData.precio) || 0.00,
+        precio: parseFloat(formData.precio) || 0.0,
         dosis: formData.dosis,
         csp: formData.csp,
-        urgente: formData.urgente
+        urgente: formData.urgente,
       });
 
       if (onPedidoCreado) {
         onPedidoCreado({
           pedido: resPedido.data?.pedido,
           receta: resReceta.data?.receta,
-          droga: drogaSeleccionada
+          droga: drogaSeleccionada,
         });
       }
     } catch (err) {
-      const msj = err.response?.data?.error || err.response?.data?.motivo || err.message || 'Error al persistir el pedido';
-      setErrorEnvio('Error al registrar pedido: ' + msj);
+      const msj =
+        err.response?.data?.error ||
+        err.response?.data?.motivo ||
+        err.message ||
+        "Error al persistir el pedido";
+      setErrorEnvio("Error al registrar pedido: " + msj);
     } finally {
       setGuardando(false);
     }
@@ -197,7 +278,8 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
               Verificacion Humana de Receta y Datos de Formula
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Inspeccione el documento original y corrobore los campos antes de confirmar el ingreso al laboratorio
+              Inspeccione el documento original y corrobore los campos antes de
+              confirmar el ingreso al laboratorio
             </p>
           </div>
         </div>
@@ -217,7 +299,10 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
       </div>
 
       {recetaData?.resultado?.errorIA && (
-        <div role="alert" className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-800 text-xs">
+        <div
+          role="alert"
+          className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-800 text-xs"
+        >
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <span>Aviso de IA: {recetaData.resultado.errorIA}</span>
@@ -226,7 +311,10 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
       )}
 
       {errorEnvio && (
-        <div role="alert" className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-800 text-xs">
+        <div
+          role="alert"
+          className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-800 text-xs"
+        >
           <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
           <span>{errorEnvio}</span>
         </div>
@@ -240,7 +328,7 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
               Documento Medico Original
             </h3>
             <span className="text-[11px] font-mono text-slate-400">
-              {archivoInfo.filename || 'receta_mostrador'}
+              {archivoInfo.filename || "receta_mostrador"}
             </span>
           </div>
 
@@ -254,7 +342,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             ) : (
               <div className="py-20 flex flex-col items-center justify-center text-center px-4">
                 <FileText className="w-12 h-12 text-slate-400 mb-3" />
-                <p className="text-sm font-medium text-slate-700">Documento en formato PDF cargado</p>
+                <p className="text-sm font-medium text-slate-700">
+                  Documento en formato PDF cargado
+                </p>
                 <p className="text-xs text-slate-500 mt-1">
                   El archivo se encuentra almacenado y verificado en el servidor
                 </p>
@@ -268,7 +358,10 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
               Auditoria de Legibilidad y Validez
             </div>
             {validacionActual.errores.length === 0 ? (
-              <p className="text-emerald-700">Todos los requisitos de vigencia y registro legal estan verificados.</p>
+              <p className="text-emerald-700">
+                Todos los requisitos de vigencia y registro legal estan
+                verificados.
+              </p>
             ) : (
               <ul className="list-disc list-inside space-y-0.5 text-amber-700">
                 {validacionActual.errores.map((err, idx) => (
@@ -292,10 +385,14 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</h4>
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Cliente
+              </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Nombre Completo *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Nombre Completo *
+                  </label>
                   <input
                     type="text"
                     name="nombreCliente"
@@ -307,7 +404,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">DNI (Opcional)</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    DNI (Opcional)
+                  </label>
                   <input
                     type="text"
                     name="dniCliente"
@@ -318,7 +417,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Telefono de Contacto *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Telefono de Contacto *
+                  </label>
                   <input
                     type="text"
                     name="telefonoCliente"
@@ -333,10 +434,14 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             </div>
 
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Formula Magistral</h4>
-              
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Formula Magistral
+              </h4>
+
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Principio Activo (Droga) *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Principio Activo (Droga) *
+                </label>
                 {cargandoDrogas ? (
                   <div className="text-xs text-slate-500 py-2 flex items-center gap-2">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -351,7 +456,7 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                   >
                     <option value="">Seleccione principio activo</option>
-                    {principiosActivos.map(p => (
+                    {principiosActivos.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nombre} (Stock actual: {p.stockDisponible})
                       </option>
@@ -362,7 +467,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Dosis Prescripta *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Dosis Prescripta *
+                  </label>
                   <input
                     type="text"
                     name="dosis"
@@ -374,7 +481,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Cantidad Total (C.S.P.) *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Cantidad Total (C.S.P.) *
+                  </label>
                   <input
                     type="text"
                     name="csp"
@@ -389,10 +498,14 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             </div>
 
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Validacion Legal y Medico</h4>
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Validacion Legal y Medico
+              </h4>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Matricula Medico *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Matricula Medico *
+                  </label>
                   <input
                     type="text"
                     name="matriculaMedico"
@@ -404,7 +517,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Codigo de Barras *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Codigo de Barras *
+                  </label>
                   <input
                     type="text"
                     name="codigoBarras"
@@ -416,7 +531,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Fecha Emision *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Fecha Emision *
+                  </label>
                   <input
                     type="date"
                     name="fechaEmision"
@@ -430,10 +547,14 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             </div>
 
             <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Condiciones de Entrega</h4>
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Condiciones de Entrega
+              </h4>
               <div className="grid grid-cols-2 gap-3 items-center">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Precio Estimado ($)</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Precio Estimado ($)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -466,14 +587,20 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
                 </div>
                 <span className="font-semibold text-slate-900">
                   {formData.urgente
-                    ? 'Inmediata / Mismo dia (Urgente)'
+                    ? "Inmediata / Mismo dia (Urgente)"
                     : tieneStock === false
-                    ? '48 horas (Requiere drogueria)'
-                    : '24 horas (Con stock en laboratorio)'}
+                      ? "48 horas (Requiere drogueria)"
+                      : "24 horas (Con stock en laboratorio)"}
                 </span>
               </div>
             </div>
-
+            <button
+              type="button"
+              onClick={() => setMostrarModalRechazo(true)}
+              className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded font-bold text-xs flex items-center gap-1 transition"
+            >
+              Rechazar Receta
+            </button>
             <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
               <button
                 type="button"
@@ -503,6 +630,80 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             </div>
           </form>
         </div>
+        {mostrarModalRechazo && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl border p-6 max-w-md w-full">
+              <h3 className="text-lg font-bold text-red-700 mb-2 flex items-center gap-2">
+                Rechazar Receta Médica
+              </h3>
+              <p className="text-xs text-slate-600 mb-4">
+                Indique la razón reglamentaria para rechazar esta prescripción.
+                El evento quedará registrado en el historial.
+              </p>
+
+              <div className="space-y-3 text-xs mb-4">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Motivo de Rechazo
+                  </label>
+                  <select
+                    value={motivoRechazoSeleccionado}
+                    onChange={(e) =>
+                      setMotivoRechazoSeleccionado(e.target.value)
+                    }
+                    className="w-full border rounded p-2 bg-white font-medium"
+                  >
+                    <option value="Receta vencida (> 30 días) - RN-01">
+                      Receta vencida ('+ 30 dias') [RN-01]
+                    </option>
+                    <option value="Falta de Firma / Sello / Matrícula Médica">
+                      Falta de Firma / Sello / Matrícula Médica
+                    </option>
+                    <option value="Prescripción Borrosa / Ilegible">
+                      Prescripción Borrosa / Ilegible
+                    </option>
+                    <option value="Enmienda o Tachadura sin Salvar">
+                      Enmienda o Tachadura sin Salvar
+                    </option>
+                    <option value="Otro motivo">Otro motivo</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Observaciones adicionales (Opcional)
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={motivoDetalle}
+                    onChange={(e) => setMotivoDetalle(e.target.value)}
+                    className="w-full border rounded p-2"
+                    placeholder="Detalle los hallazgos en la prescripción..."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalRechazo(false)}
+                  className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 font-medium text-xs"
+                  disabled={enviandoRechazo}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmarRechazo}
+                  className="px-4 py-1.5 bg-red-600 text-white rounded hover:bg-red-500 font-bold text-xs"
+                  disabled={enviandoRechazo}
+                >
+                  {enviandoRechazo ? "Guardando..." : "Confirmar Rechazo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
