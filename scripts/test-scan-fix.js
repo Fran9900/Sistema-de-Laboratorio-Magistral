@@ -1,0 +1,42 @@
+import fs from 'fs';
+import path from 'path';
+
+const basePath = path.resolve('C:/Users/ituka/Documents/Honey/workspace/Javascript/Sistema de Laboratorio Magistral');
+
+const archivosAExaminar = [
+  path.join(basePath, 'backend/src/services/ai/responseSchema.js'),
+  path.join(basePath, 'backend/src/services/ai/prompts.js'),
+  path.join(basePath, 'backend/src/services/ai/geminiClient.js'),
+  path.join(basePath, 'backend/src/services/ai/aiService.js'),
+  path.join(basePath, 'backend/src/controllers/receta.controller.js'),
+  path.join(basePath, 'frontend/src/components/recepcion/ScannerModal.jsx'),
+  path.join(basePath, 'frontend/src/components/recepcion/SideBySideView.jsx')
+];
+
+let errores = 0;
+
+archivosAExaminar.forEach(filePath => {
+  if (!fs.existsSync(filePath)) {
+    console.error(`Falta el archivo: ${filePath}`);
+    errores++;
+    return;
+  }
+
+  const contenido = fs.readFileSync(filePath, 'utf-8');
+
+  const lineas = contenido.split('\n');
+  lineas.forEach((linea, index) => {
+    const trimmed = linea.trim();
+    if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.endsWith('*/')) {
+      console.error(`Comentario detectado en ${filePath}:${index + 1} -> ${trimmed}`);
+      errores++;
+    }
+  });
+});
+
+if (errores === 0) {
+  console.log('Verificacion de solucion de escaneo exitosa: cero comentarios en codigo y contratos integrados.');
+} else {
+  console.error(`Verificacion fallida con ${errores} errores.`);
+  process.exit(1);
+}

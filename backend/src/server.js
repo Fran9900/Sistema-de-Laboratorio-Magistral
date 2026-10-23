@@ -8,6 +8,7 @@ import recetaRoutes from './routes/receta.routes.js';
 import pedidoRoutes from './routes/pedido.routes.js';
 import pagoRoutes from './routes/pago.routes.js';
 import principioActivoRoutes from './routes/principioActivo.routes.js';
+import clienteRoutes from './routes/cliente.routes.js';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use('/api/recetas', recetaRoutes);
 app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/pagos', pagoRoutes);
 app.use('/api/principiosActivos', principioActivoRoutes);
+app.use('/api/clientes', clienteRoutes);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, async (err) => {

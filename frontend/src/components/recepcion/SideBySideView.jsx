@@ -16,7 +16,8 @@ import api from '../../services/api.js';
 export default function SideBySideView({ recetaData, onVolver, onPedidoCreado }) {
   const datosExtraidos = recetaData?.resultado?.datosExtraidos || {};
   const archivoInfo = recetaData?.resultado?.archivo || {};
-  const previewOriginal = recetaData?.previewUrl || (archivoInfo.url ? archivoInfo.url : null);
+  const urlCalculada = archivoInfo.url ? (archivoInfo.url.startsWith('http') ? archivoInfo.url : `http://localhost:4000${archivoInfo.url}`) : null;
+  const previewOriginal = recetaData?.previewUrl || urlCalculada;
   const esPdf = recetaData?.archivoLocal?.type === 'application/pdf' || archivoInfo.filename?.endsWith('.pdf');
 
   const [principiosActivos, setPrincipiosActivos] = useState([]);
@@ -25,15 +26,15 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
   const [errorEnvio, setErrorEnvio] = useState(null);
 
   const [formData, setFormData] = useState({
-    nombreCliente: '',
-    dniCliente: '',
-    telefonoCliente: '',
+    nombreCliente: datosExtraidos.nombreCliente || '',
+    dniCliente: datosExtraidos.dniCliente || '',
+    telefonoCliente: datosExtraidos.telefonoCliente || '',
     origenPedido: 'mostrador',
     precio: '0.00',
     principioActivoId: '',
     dosis: datosExtraidos.dosis || '',
     csp: datosExtraidos.csp || '',
-    urgente: false,
+    urgente: Boolean(datosExtraidos.urgente),
     codigoBarras: datosExtraidos.codigoBarra || '',
     matriculaMedico: datosExtraidos.medicoMatricula || '',
     fechaEmision: datosExtraidos.fechaEmision || '',
@@ -214,6 +215,15 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
           )}
         </div>
       </div>
+
+      {recetaData?.resultado?.errorIA && (
+        <div role="alert" className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-800 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span>Aviso de IA: {recetaData.resultado.errorIA}</span>
+          </div>
+        </div>
+      )}
 
       {errorEnvio && (
         <div role="alert" className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-800 text-xs">

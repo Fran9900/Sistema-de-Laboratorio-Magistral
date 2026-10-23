@@ -6,8 +6,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env') });
 
 export function obtenerClienteGemini() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -19,7 +22,7 @@ export function obtenerClienteGemini() {
 
 export function obtenerModeloGenerativo(opciones = {}) {
   const genAI = obtenerClienteGemini();
-  const nombreModelo = opciones.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const nombreModelo = opciones.model || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   return genAI.getGenerativeModel({
     model: nombreModelo,
     ...opciones

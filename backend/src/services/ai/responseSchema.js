@@ -3,6 +3,18 @@ import { SchemaType } from '@google/generative-ai';
 export const recetaResponseSchema = {
   type: SchemaType.OBJECT,
   properties: {
+    nombreCliente: {
+      type: SchemaType.STRING,
+      description: 'Nombre y apellido del paciente o cliente, o null si no figura.'
+    },
+    dniCliente: {
+      type: SchemaType.STRING,
+      description: 'Numero de documento de identidad DNI del paciente sin puntos, o null si no figura.'
+    },
+    telefonoCliente: {
+      type: SchemaType.STRING,
+      description: 'Numero de telefono de contacto del paciente, o null si no figura.'
+    },
     fechaEmision: {
       type: SchemaType.STRING,
       description: 'Fecha de emision de la receta en formato YYYY-MM-DD.'
@@ -25,11 +37,15 @@ export const recetaResponseSchema = {
     },
     dosis: {
       type: SchemaType.STRING,
-      description: 'Dosis o concentracion indicada (ej: 500mg, 5%, 10ml).'
+      description: 'Dosis o concentracion indicada (ej: 50mg, 500mg, 5%, 10ml).'
     },
     csp: {
       type: SchemaType.STRING,
-      description: 'Cantidad suficiente para o volumen final indicado (ej: 100ml, 30 capsulas).'
+      description: 'Cantidad suficiente para o volumen final indicado (ej: 60 capsulas, 100ml).'
+    },
+    urgente: {
+      type: SchemaType.BOOLEAN,
+      description: 'true si la receta tiene tildada o indicada Urgencia Medica (RN-05), false en caso contrario.'
     },
     esLegible: {
       type: SchemaType.BOOLEAN,

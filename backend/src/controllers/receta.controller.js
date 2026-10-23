@@ -59,6 +59,7 @@ export const procesarYValidarReceta = async (req, res) => {
       datosExtraidos = await extraerDatosReceta(req.file.path, req.file.mimetype);
     } catch (aiErr) {
       errorIA = aiErr.message;
+      console.error('Fallo en la llamada a Gemini Vision API:', aiErr.message);
     }
 
     if (!datosExtraidos) {
@@ -66,8 +67,12 @@ export const procesarYValidarReceta = async (req, res) => {
         mensaje: 'Archivo recibido. La extraccion automatica por IA no estuvo disponible. Se requiere carga manual.',
         esValida: false,
         errores: ['Extraccion automatica no disponible: ' + errorIA],
-        motivoRechazo: 'Extraccion automatica no disponible.',
+        motivoRechazo: 'Extraccion automatica no disponible: ' + errorIA,
+        errorIA: errorIA || null,
         datosExtraidos: {
+          nombreCliente: null,
+          dniCliente: null,
+          telefonoCliente: null,
           fechaEmision: null,
           codigoBarra: null,
           medicoNombre: null,
@@ -75,8 +80,9 @@ export const procesarYValidarReceta = async (req, res) => {
           principioActivo: null,
           dosis: null,
           csp: null,
+          urgente: false,
           esLegible: false,
-          observaciones: 'Carga manual requerida.'
+          observaciones: 'Carga manual requerida: ' + (errorIA || 'API Key no configurada o error de lectura.')
         },
         archivo: {
           filename: req.file.filename,
@@ -144,11 +150,11 @@ export const createReceta = async (req, res) => {
 
 export const getRecetaById = async (req, res) => {
   try {
-    const receta = req.recurso
+    const receta = req.recurso;
     await receta.reload({
       include: [{ model: db.Pedido, as: 'pedido' }]
     });
-    return res.status(200).json(receta)
+    return res.status(200).json(receta);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

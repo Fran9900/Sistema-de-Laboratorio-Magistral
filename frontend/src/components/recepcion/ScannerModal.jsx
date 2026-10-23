@@ -94,17 +94,23 @@ export default function ScannerModal({ isOpen, onClose, onRecetaProcesada }) {
       const response = await api.post('/recetas/escanear', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: 90000
       });
 
       if (onRecetaProcesada) {
+        const urlServidor = response.data?.archivo?.url;
         onRecetaProcesada({
           resultado: response.data,
           archivoLocal: archivo,
-          previewUrl: previewUrl || response.data?.archivo?.url
+          previewUrl: previewUrl || (urlServidor ? (urlServidor.startsWith('http') ? urlServidor : `http://localhost:4000${urlServidor}`) : null)
         });
       }
-      handleCerrar();
+      setArchivo(null);
+      setEsPdf(false);
+      setErrorLocal(null);
+      setCargando(false);
+      onClose();
     } catch (err) {
       const msj = err.response?.data?.error || err.message || 'Error de conexion con el servidor';
       setErrorLocal('No se pudo procesar la receta: ' + msj);

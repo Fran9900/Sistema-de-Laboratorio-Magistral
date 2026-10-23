@@ -42,7 +42,7 @@ export const createPedido = async (req, res) => {
           estadoPedido: { [Op.notIn]: ['entregado', 'cancelado'] }
         }
       });
-      return !!existe;
+      return !existe;
     });
 
     const estadoInicial = origenPedido === 'email' ? 'pendiente_pago' : 'ingresado';
@@ -111,7 +111,7 @@ export const getPedidoById = async (req, res) => {
         { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' },
         { model: db.Reclamo, as: 'reclamos' }
       ]
-    })
+    });
     return res.status(200).json(pedido);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -191,22 +191,27 @@ export const registrarPago = async (req, res) => {
 
 export const entregarPedido = async (req, res) => {
   try {
-    const pedido = req.recurso
+    const pedido = req.recurso;
     const { pinIngresado } = req.body;
 
     if (!pinIngresado) {
       return res.status(400).json({ error: 'Debe ingresar el PIN de control para retirar.' });
     }
 
+    if (pedido.estadoPedido !== 'listo_retiro') {
+      return res.status(400).json({
+        error: 'El preparado no se encuentra listo para retiro. Estado actual: ' + pedido.estadoPedido
+      });
+    }
 
     if (pedido.pinControl !== String(pinIngresado).trim()) {
-      return res.status(400).json({ error: 'PIN de control incorrecto. No se puede entregar el producto.' });
+      return res.status(400).json({ error: 'PIN de control incorrecto. No coincide con el talonario del cliente.' });
     }
 
     await pedido.update({ estadoPedido: 'entregado' });
 
     return res.status(200).json({
-      mensaje: 'Producto entregado con exito.',
+      mensaje: 'Producto entregado con exito. Ciclo del preparado cerrado.',
       pedido
     });
   } catch (error) {
@@ -250,11 +255,69 @@ export const cambiarUrgenciaPedido = async (req, res) => {
   }
 };
 
+export const actualizarEstadoPedido = async (req, res) => {
+  try {
+    const pedido = req.recurso;
+    const { estadoPedido } = req.body;
+
+    const estadosPermitidos = [
+      'ingresado',
+      'pendiente_pago',
+      'en_preparacion',
+      'listo_retiro',
+      'entregado',
+      'cancelado'
+    ];
+
+    if (!estadoPedido || !estadosPermitidos.includes(estadoPedido)) {
+      return res.status(400).json({
+        error: 'Estado de pedido no valido. Valores permitidos: ' + estadosPermitidos.join(', ')
+      });
+    }
+
+    await pedido.update({ estadoPedido });
+
+    return res.status(200).json({
+      mensaje: 'Estado del pedido actualizado a ' + estadoPedido,
+      pedido
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const finalizarPreparado = async (req, res) => {
+  try {
+    const pedido = req.recurso;
+    const { numeroPreparado } = req.body;
+
+    if (!numeroPreparado || String(numeroPreparado).trim() === '') {
+      return res.status(400).json({
+        error: 'El numero de preparado fisico del libro recetario es obligatorio para finalizar.'
+      });
+    }
+
+    await pedido.update({
+      numeroPreparado: String(numeroPreparado).trim(),
+      estadoPedido: 'listo_retiro'
+    });
+
+    return res.status(200).json({
+      mensaje: 'Preparado finalizado y listo para retiro.',
+      pedido
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 export default {
   createPedido,
   getPedidoById,
   getPedidos,
   registrarPago,
   entregarPedido,
-  cambiarUrgenciaPedido
+  cambiarUrgenciaPedido,
+  actualizarEstadoPedido,
+  finalizarPreparado
 };
