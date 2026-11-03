@@ -10,6 +10,7 @@ import BusquedaCliente from "./components/cliente/BusquedaCliente.jsx";
 import { PlusCircle, Search, ClipboardList, ShieldCheck } from "lucide-react";
 import HistorialRecetas from "./components/recepcion/HistorialRecetas.jsx";
 import ModalDetalleReceta from "./components/recepcion/DetalleRecetaModal.jsx";
+import ModalesInformativosRecepcion from "./components/recepcion/ModalesInformativos.jsx";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("recepcion");
@@ -19,6 +20,7 @@ export default function App() {
   const [pedidoCreadoExito, setPedidoCreadoExito] = useState(null);
   const [recetaViewerData, setRecetaViewerData] = useState(null);
   const [pedidoAFinalizar, setPedidoAFinalizar] = useState(null);
+  const [modalInformativo, setModalInformativo] = useState(null);
 
   const handleRecetaProcesada = (datos) => {
     setRecetaActiva(datos);
@@ -111,36 +113,42 @@ export default function App() {
 
               <div className="grid grid-cols-3 gap-6">
                 <button
-                  type="button"
                   onClick={() => setScannerAbierto(true)}
-                  className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4 hover:border-slate-300 transition-colors cursor-pointer text-left w-full"
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-slate-400 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
                 >
-                  <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-800 flex-shrink-0">
-                    <PlusCircle className="w-5 h-5" />
-                  </div>
-                  <span className="text-base font-medium text-slate-900">
+                  <span className="p-2 bg-slate-100 group-hover:bg-slate-900 group-hover:text-white rounded-xl transition-colors">
+                    ➕
+                  </span>
+                  <span className="font-semibold text-slate-800 text-sm">
                     Ingresar Nueva Receta
                   </span>
                 </button>
 
-                <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-800 flex-shrink-0">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <span className="text-base font-medium text-slate-900">
+                <button
+                  onClick={() => setModalInformativo("reglas")}
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
+                >
+                  <span className="p-2 bg-slate-100 group-hover:bg-emerald-100 group-hover:text-emerald-700 rounded-xl transition-colors">
+                    🛡️
+                  </span>
+                  <span className="font-semibold text-slate-800 text-sm">
                     Reglas Legales
                   </span>
-                </div>
+                </button>
 
-                <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-800 flex-shrink-0">
-                    <ClipboardList className="w-5 h-5" />
-                  </div>
-                  <span className="text-base font-medium text-slate-900">
+                <button
+                  onClick={() => setModalInformativo("plazos")}
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
+                >
+                  <span className="p-2 bg-slate-100 group-hover:bg-blue-100 group-hover:text-blue-700 rounded-xl transition-colors">
+                    📋
+                  </span>
+                  <span className="font-semibold text-slate-800 text-sm">
                     Plazos de Entrega
                   </span>
-                </div>
+                </button>
               </div>
+
               <HistorialRecetas onVerReceta={handleVerRecetaDetalle} />
               {recetaSeleccionada && (
                 <ModalDetalleReceta
@@ -150,6 +158,10 @@ export default function App() {
               )}
             </section>
           ))}
+        <ModalesInformativosRecepcion
+          modalActivo={modalInformativo}
+          onClose={() => setModalInformativo(null)}
+        />
 
         {activeTab === "clientes" && <BusquedaCliente />}
 
