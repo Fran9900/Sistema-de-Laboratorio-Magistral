@@ -128,7 +128,10 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
         setPrincipiosActivos(lista);
 
         if (datosExtraidos.principioActivo) {
-          const buscado = datosExtraidos.principioActivo.toLowerCase().trim();
+          const nombrePuro = String(datosExtraidos.principioActivo)
+            .replace(/(?:\d+\s*(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b)|\b(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b|\d+/gi, '')
+            .trim();
+          const buscado = nombrePuro.toLowerCase();
           const coincidencia = lista.find(p => p.nombre?.toLowerCase().includes(buscado) || buscado.includes(p.nombre?.toLowerCase()));
           if (coincidencia) {
             setFormData(prev => ({ 
@@ -141,9 +144,9 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
             setFormData(prev => ({ 
               ...prev, 
               principioActivoId: '',
-              principioActivoTexto: datosExtraidos.principioActivo
+              principioActivoTexto: nombrePuro
             }));
-            setPrincipioActivoInput(datosExtraidos.principioActivo);
+            setPrincipioActivoInput(nombrePuro);
           }
         }
       } catch (err) {

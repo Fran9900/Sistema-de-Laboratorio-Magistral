@@ -117,7 +117,7 @@ export default function App() {
                   className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-slate-400 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
                 >
                   <span className="p-2 bg-slate-100 group-hover:bg-slate-900 group-hover:text-white rounded-xl transition-colors">
-                    ➕
+                    <PlusCircle className="w-5 h-5 text-slate-700 group-hover:text-white" />
                   </span>
                   <span className="font-semibold text-slate-800 text-sm">
                     Ingresar Nueva Receta
@@ -126,10 +126,10 @@ export default function App() {
 
                 <button
                   onClick={() => setModalInformativo("reglas")}
-                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-slate-400 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
                 >
-                  <span className="p-2 bg-slate-100 group-hover:bg-emerald-100 group-hover:text-emerald-700 rounded-xl transition-colors">
-                    🛡️
+                  <span className="p-2 bg-slate-100 group-hover:bg-slate-900 group-hover:text-white rounded-xl transition-colors">
+                    <ShieldCheck className="w-5 h-5 text-slate-700 group-hover:text-white" />
                   </span>
                   <span className="font-semibold text-slate-800 text-sm">
                     Reglas Legales
@@ -138,10 +138,10 @@ export default function App() {
 
                 <button
                   onClick={() => setModalInformativo("plazos")}
-                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
+                  className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-slate-400 hover:shadow-md transition-all flex items-center justify-center gap-3 cursor-pointer group"
                 >
-                  <span className="p-2 bg-slate-100 group-hover:bg-blue-100 group-hover:text-blue-700 rounded-xl transition-colors">
-                    📋
+                  <span className="p-2 bg-slate-100 group-hover:bg-slate-900 group-hover:text-white rounded-xl transition-colors">
+                    <ClipboardList className="w-5 h-5 text-slate-700 group-hover:text-white" />
                   </span>
                   <span className="font-semibold text-slate-800 text-sm">
                     Plazos de Entrega

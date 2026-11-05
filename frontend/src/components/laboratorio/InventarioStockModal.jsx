@@ -4,7 +4,6 @@ import {
   Boxes, 
   Plus, 
   Search, 
-  PackagePlus, 
   CheckCircle2, 
   AlertTriangle, 
   Loader2,
@@ -14,6 +13,7 @@ import api from '../../services/api.js';
 
 export default function InventarioStockModal({ isOpen, onClose, onStockModificado }) {
   const [principiosActivos, setPrincipiosActivos] = useState([]);
+  const [inputsStock, setInputsStock] = useState({});
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
@@ -30,6 +30,11 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
       const res = await api.get('/principiosActivos');
       const lista = Array.isArray(res.data) ? res.data : [];
       setPrincipiosActivos(lista);
+      const mapa = {};
+      lista.forEach(d => {
+        mapa[d.id] = String(Number(d.stockDisponible || 0));
+      });
+      setInputsStock(mapa);
     } catch (err) {
       setErrorLocal('Error al consultar inventario: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -49,33 +54,22 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
 
   if (!isOpen) return null;
 
-  const handleSumarStockRapido = async (droga, cantidadASumar) => {
-    setActualizandoId(droga.id);
-    setErrorLocal(null);
-    try {
-      await api.put(`/principiosActivos/${droga.id}`, {
-        cantidad: cantidadASumar,
-        incrementar: true
-      });
-      setNotificacion(`Stock de ${droga.nombre} incrementado en +${cantidadASumar} u.`);
-      await cargarCatalogo();
-      if (onStockModificado) onStockModificado();
-    } catch (err) {
-      setErrorLocal('No se pudo actualizar el stock: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setActualizandoId(null);
+  const handleActualizarStock = async (droga) => {
+    const valorStr = inputsStock[droga.id];
+    const cantidadNum = parseFloat(valorStr);
+    if (isNaN(cantidadNum) || cantidadNum < 0) {
+      setErrorLocal('Ingrese un número de stock válido mayor o igual a 0.');
+      return;
     }
-  };
 
-  const handleFijarStock = async (droga, cantidadFija) => {
     setActualizandoId(droga.id);
     setErrorLocal(null);
     try {
       await api.put(`/principiosActivos/${droga.id}`, {
-        cantidad: cantidadFija,
+        cantidad: cantidadNum,
         incrementar: false
       });
-      setNotificacion(`Stock de ${droga.nombre} establecido en ${cantidadFija} u.`);
+      setNotificacion(`Stock de ${droga.nombre} actualizado a ${cantidadNum.toFixed(2)} g.`);
       await cargarCatalogo();
       if (onStockModificado) onStockModificado();
     } catch (err) {
@@ -93,12 +87,18 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
       return;
     }
 
+    const regexDosisOUnidades = /(?:\d+\s*(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b)|\b(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b|\d+/i;
+    if (regexDosisOUnidades.test(nombreLimpio)) {
+      setErrorLocal('No se permiten unidades (g/mg) ni dosis en el nombre. Ingrese únicamente el nombre del principio activo.');
+      return;
+    }
+
     setGuardandoNuevo(true);
     setErrorLocal(null);
     try {
       await api.post('/principiosActivos', {
         nombre: nombreLimpio,
-        stockDisponible: parseInt(nuevoStock, 10) || 0
+        stockDisponible: parseFloat(nuevoStock) || 0
       });
       setNuevoNombre('');
       setNuevoStock('100');
@@ -123,10 +123,10 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
     >
       <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center">
-              <Boxes className="w-5 h-5 text-emerald-400" />
+              <Boxes className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900">
@@ -154,15 +154,15 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
           )}
 
           {notificacion && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-medium flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="p-3 bg-slate-900 text-white rounded-xl text-xs font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-white" />
               <span>{notificacion}</span>
             </div>
           )}
 
-          <form onSubmit={handleCrearPrincipioActivo} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-            <div className="flex items-center gap-2 text-slate-800 font-bold">
-              <Plus className="w-4 h-4 text-emerald-600" />
+          <form onSubmit={handleCrearPrincipioActivo} className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              <Plus className="w-4 h-4 text-slate-800" />
               <span>Registrar Nueva Materia Prima en Catálogo</span>
             </div>
 
@@ -171,25 +171,27 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
                 type="text"
                 value={nuevoNombre}
                 onChange={(e) => setNuevoNombre(e.target.value)}
-                placeholder="Nombre de droga (ej: Morfina, Clonazepam, Omeprazol)"
-                className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="Nombre de droga sin dosis (ej: Morfina, Clonazepam, Omeprazol)"
+                className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
 
-              <div className="w-28 relative">
+              <div className="w-32 relative">
                 <input
                   type="number"
+                  step="0.01"
                   min="0"
                   value={nuevoStock}
                   onChange={(e) => setNuevoStock(e.target.value)}
-                  placeholder="Stock"
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Stock (g)"
+                  className="w-full pl-3 pr-7 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium text-center focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
+                <span className="absolute right-2.5 top-2.5 text-slate-400 text-xs pointer-events-none font-medium">g</span>
               </div>
 
               <button
                 type="submit"
                 disabled={guardandoNuevo}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap cursor-pointer"
               >
                 {guardandoNuevo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 <span>Guardar</span>
@@ -220,14 +222,14 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
             </button>
           </div>
 
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3">Materia Prima</th>
                   <th className="py-2.5 px-3 text-center">Stock Físico</th>
                   <th className="py-2.5 px-3">Estado</th>
-                  <th className="py-2.5 px-3 text-right">Reabastecimiento Rápido</th>
+                  <th className="py-2.5 px-3 text-right">Ajustar Stock</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -257,54 +259,54 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
                           {droga.nombre}
                         </td>
                         <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-800">
-                          {cant} u.
+                          {cant} g
                         </td>
                         <td className="py-2.5 px-3">
                           {sinStock ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
                               <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
-                              Agotado (0 u.)
+                              Agotado (0 g)
                             </span>
                           ) : bajoStock ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200">
                               Stock Bajo
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
                               Disponible
                             </span>
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleActualizarStock(droga);
+                            }}
+                            className="flex items-center justify-end gap-1.5"
+                          >
+                            <div className="relative w-28">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={inputsStock[droga.id] !== undefined ? inputsStock[droga.id] : cant}
+                                onChange={(e) => setInputsStock(prev => ({ ...prev, [droga.id]: e.target.value }))}
+                                placeholder="0.00"
+                                className="w-full pl-2.5 pr-6 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono font-bold text-center text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                              />
+                              <span className="absolute right-2 top-1.5 text-slate-400 text-[10px] pointer-events-none font-medium">g</span>
+                            </div>
+
                             <button
-                              type="button"
-                              onClick={() => handleFijarStock(droga, 0)}
-                              disabled={estaActualizando || cant === 0}
-                              className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md font-semibold text-[11px] transition-colors disabled:opacity-40"
-                              title="Fijar stock en 0 para simular agotamiento"
-                            >
-                              0 u.
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSumarStockRapido(droga, 50)}
+                              type="submit"
                               disabled={estaActualizando}
-                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md font-semibold text-[11px] transition-colors disabled:opacity-50"
-                              title="Sumar 50 unidades de droguería"
+                              className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium text-[11px] shadow-2xs transition-colors disabled:opacity-50 inline-flex items-center gap-1 cursor-pointer"
+                              title="Guardar nuevo stock"
                             >
-                              {estaActualizando ? <Loader2 className="w-3 h-3 animate-spin" /> : '+50 u.'}
+                              {estaActualizando ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Guardar'}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSumarStockRapido(droga, 100)}
-                              disabled={estaActualizando}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-md font-semibold text-[11px] transition-colors disabled:opacity-50"
-                              title="Sumar 100 unidades"
-                            >
-                              +100 u.
-                            </button>
-                          </div>
+                          </form>
                         </td>
                       </tr>
                     );

@@ -3,10 +3,10 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.bulkInsert('PrincipioActivos', [
-      { nombre: 'Ibuprofeno 600mg', stockDisponible: 50, createdAt: new Date(), updatedAt: new Date() },
-      { nombre: 'Paracetamol 500mg', stockDisponible: 100, createdAt: new Date(), updatedAt: new Date() },
-      { nombre: 'Amoxicilina 500mg', stockDisponible: 0, createdAt: new Date(), updatedAt: new Date() },
-      { nombre: 'Morfina 10mg', stockDisponible: 0, createdAt: new Date(), updatedAt: new Date() }
+      { nombre: 'Ibuprofeno', stockDisponible: 50.00, createdAt: new Date(), updatedAt: new Date() },
+      { nombre: 'Paracetamol', stockDisponible: 100.00, createdAt: new Date(), updatedAt: new Date() },
+      { nombre: 'Amoxicilina', stockDisponible: 50.00, createdAt: new Date(), updatedAt: new Date() },
+      { nombre: 'Morfina', stockDisponible: 0.00, createdAt: new Date(), updatedAt: new Date() }
     ], {});
   },
 

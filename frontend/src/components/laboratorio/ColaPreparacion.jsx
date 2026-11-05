@@ -15,6 +15,7 @@ import {
 import api from '../../services/api.js';
 import FaltaStockModal from './FaltaStockModal.jsx';
 import InventarioStockModal from './InventarioStockModal.jsx';
+import { calcularGramosRequeridos } from '../../utils/calculoFarmaceutico.js';
 
 export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   const [pedidos, setPedidos] = useState([]);
@@ -47,8 +48,9 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
 
   const handleIniciarPreparacion = async (pedido) => {
     const stock = Number(pedido.principioActivo?.stockDisponible || 0);
+    const gramosReq = calcularGramosRequeridos(pedido.dosis, pedido.csp);
 
-    if (stock <= 0) {
+    if (stock < gramosReq) {
       setPedidoFaltaStock(pedido);
       return;
     }
@@ -71,11 +73,6 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   };
 
   const handleIntentarFinalizar = (pedido) => {
-    const stock = Number(pedido.principioActivo?.stockDisponible || 0);
-    if (stock <= 0) {
-      setPedidoFaltaStock(pedido);
-      return;
-    }
     if (onFinalizarPreparado) {
       onFinalizarPreparado(pedido);
     }
@@ -107,7 +104,9 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
       return p.estadoPedido === 'listo_retiro';
     }
     if (filtroEstado === 'sin_stock') {
-      return Number(p.principioActivo?.stockDisponible || 0) <= 0 && ['ingresado', 'en_preparacion'].includes(p.estadoPedido);
+      const stock = Number(p.principioActivo?.stockDisponible || 0);
+      const req = calcularGramosRequeridos(p.dosis, p.csp);
+      return stock < req && ['ingresado', 'en_preparacion'].includes(p.estadoPedido);
     }
     return true;
   });
@@ -152,7 +151,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors cursor-pointer"
             title="Abrir catálogo e inventario general de materias primas"
           >
-            <Boxes className="w-3.5 h-3.5 text-emerald-400" />
+            <Boxes className="w-3.5 h-3.5 text-slate-300" />
             <span>Inventario / Stock</span>
           </button>
 
@@ -240,7 +239,8 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                   const droga = pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Droga Magistral';
                   const esUrgente = pedido.urgente;
                   const stockDisponible = Number(pedido.principioActivo?.stockDisponible || 0);
-                  const sinStock = stockDisponible <= 0 && ['ingresado', 'en_preparacion'].includes(pedido.estadoPedido);
+                  const gramosRequeridos = calcularGramosRequeridos(pedido.dosis, pedido.csp);
+                  const sinStock = stockDisponible < gramosRequeridos && ['ingresado', 'en_preparacion'].includes(pedido.estadoPedido);
 
                   return (
                     <tr
@@ -280,10 +280,10 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                             type="button"
                             onClick={() => setPedidoFaltaStock(pedido)}
                             className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
-                            title="Materia prima sin stock. Clic para gestionar droguería o reabastecer stock."
+                            title={`Stock insuficiente: ${stockDisponible} g disponibles. Se requieren ${gramosRequeridos} g para este preparado.`}
                           >
                             <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
-                            <span>Sin Stock ({stockDisponible} u.)</span>
+                            <span>Sin Stock ({stockDisponible} g / Requiere {gramosRequeridos} g)</span>
                           </button>
                         )}
                       </td>
@@ -329,12 +329,8 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                               type="button"
                               onClick={() => handleIniciarPreparacion(pedido)}
                               disabled={actualizandoId === pedido.id}
-                              className={`inline-flex items-center gap-1 px-3 py-1 font-medium rounded-lg shadow-xs transition-colors disabled:opacity-50 text-[11px] ${
-                                sinStock
-                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                  : 'bg-amber-600 hover:bg-amber-700 text-white'
-                              }`}
-                              title={sinStock ? 'Verificar stock de materia prima' : 'Iniciar formulación'}
+                              className="inline-flex items-center gap-1 px-3 py-1 font-medium rounded-lg shadow-xs transition-colors disabled:opacity-50 text-[11px] bg-amber-600 hover:bg-amber-700 text-white"
+                              title={sinStock ? `Stock insuficiente: requiere ${gramosRequeridos} g` : 'Iniciar formulación'}
                             >
                               {actualizandoId === pedido.id ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -351,18 +347,10 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                             <button
                               type="button"
                               onClick={() => handleIntentarFinalizar(pedido)}
-                              className={`inline-flex items-center gap-1 px-3 py-1 font-medium rounded-lg shadow-xs transition-colors text-[11px] ${
-                                sinStock
-                                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                              }`}
-                              title={sinStock ? 'Falta stock para finalizar preparado' : 'Finalizar y asignar folio de Libro Recetario'}
+                              className="inline-flex items-center gap-1 px-3 py-1 font-medium rounded-lg shadow-xs transition-colors text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                              title="Finalizar y asignar folio de Libro Recetario"
                             >
-                              {sinStock ? (
-                                <AlertTriangle className="w-3 h-3 text-rose-200" />
-                              ) : (
-                                <CheckCircle2 className="w-3 h-3" />
-                              )}
+                              <CheckCircle2 className="w-3 h-3" />
                               <span>Finalizar</span>
                             </button>
                           )}

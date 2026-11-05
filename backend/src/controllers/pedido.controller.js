@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import db from '../config/db.js';
 import { generarPinUnico } from '../services/pinService.js';
+import { calcularGramosRequeridos } from '../utils/calculoFarmaceutico.js';
 
 export const createPedido = async (req, res) => {
   try {
@@ -22,7 +23,10 @@ export const createPedido = async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios para registrar el pedido.' });
     }
 
-    const tieneStock = req.tieneStock !== undefined ? req.tieneStock : false;
+    const gramosRequeridos = calcularGramosRequeridos(dosis, csp);
+    const tieneStock = req.tieneStock !== undefined
+      ? req.tieneStock
+      : (req.principioActivo ? Number(req.principioActivo.stockDisponible || 0) >= gramosRequeridos : false);
     const principioActivo = req.principioActivo;
     const esUrgente = urgente === true || urgente === 'true';
 
@@ -70,12 +74,13 @@ export const createPedido = async (req, res) => {
         await db.PedidoDrogueria.create({
           pedidoId: nuevoPedido.id,
           principioActivoId: principioActivo.id,
-          cantidadSolicitada: csp || '1 unidad',
+          cantidadSolicitada: `Envase materia prima x 100 g (Requerido: ${gramosRequeridos} g)`,
           estadoSolicitud: 'pendiente',
           respuestaApi: JSON.stringify({
             origen: 'reposicion_automatica_falta_stock',
             pedidoId: nuevoPedido.id,
             principioActivo: principioActivo.nombre,
+            gramosRequeridos,
             fecha: new Date().toISOString()
           })
         });
@@ -236,7 +241,8 @@ export const cambiarUrgenciaPedido = async (req, res) => {
       diaHoraRetiro = new Date();
     } else {
       const principioActivo = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
-      const tieneStock = principioActivo ? Number(principioActivo.stockDisponible || 0) > 0 : false;
+      const gramosRequeridos = calcularGramosRequeridos(pedido.dosis, pedido.csp);
+      const tieneStock = principioActivo ? Number(principioActivo.stockDisponible || 0) >= gramosRequeridos : false;
       const horas = tieneStock ? 24 : 48;
       const fechaBase = new Date(pedido.createdAt || Date.now());
       diaHoraRetiro = new Date(fechaBase.getTime() + horas * 60 * 60 * 1000);
@@ -282,7 +288,9 @@ export const actualizarEstadoPedido = async (req, res) => {
         pa = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
       }
       if (!pa && pedido.principioActivoTexto) {
-        const nombreTexto = pedido.principioActivoTexto.trim();
+        const nombreTexto = pedido.principioActivoTexto
+          .replace(/(?:\d+\s*(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b)|\b(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b|\d+/gi, '')
+          .trim();
         pa = await db.PrincipioActivo.findOne({
           where: {
             nombre: { [Op.like]: `%${nombreTexto}%` }
@@ -291,23 +299,28 @@ export const actualizarEstadoPedido = async (req, res) => {
         if (!pa) {
           pa = await db.PrincipioActivo.create({
             nombre: nombreTexto,
-            stockDisponible: 0
+            stockDisponible: 0.00
           });
         }
         await pedido.update({ principioActivoId: pa.id });
       }
 
-      if (pa && Number(pa.stockDisponible || 0) <= 0) {
+      const gramosRequeridos = calcularGramosRequeridos(pedido.dosis, pedido.csp);
+      const stockActual = pa ? Number(pa.stockDisponible || 0) : 0;
+
+      if (!pa || stockActual < gramosRequeridos) {
+        const nombreDroga = pa ? pa.nombre : (pedido.principioActivoTexto || 'Droga Magistral');
         return res.status(400).json({
-          error: `No se puede iniciar la preparacion. Falta de stock de ${pa.nombre}. Se requiere reposicion de drogueria.`,
+          error: `No se puede iniciar la preparacion. Falta stock de ${nombreDroga}. Se requieren ${gramosRequeridos} g para este preparado y el stock disponible es de ${stockActual} g. Se requiere reposicion de drogueria.`,
           faltaStock: true,
-          principioActivo: pa
+          principioActivo: pa,
+          gramosRequeridos,
+          stockActual
         });
       }
 
       if (pa && pedido.estadoPedido !== 'en_preparacion') {
-        const stockActual = Number(pa.stockDisponible || 0);
-        const nuevoStock = Math.max(0, stockActual - 1);
+        const nuevoStock = Math.max(0, Number((stockActual - gramosRequeridos).toFixed(2)));
         await pa.update({ stockDisponible: nuevoStock });
       }
     }
@@ -345,7 +358,8 @@ export const finalizarPreparado = async (req, res) => {
 
     if (pedido.principioActivoId) {
       const pa = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
-      if (pa && Number(pa.stockDisponible || 0) <= 0) {
+      const gramosRequeridos = calcularGramosRequeridos(pedido.dosis, pedido.csp);
+      if (pa && Number(pa.stockDisponible || 0) < 0) {
         return res.status(400).json({
           error: `No se puede finalizar la orden. Falta stock de ${pa.nombre}. La materia prima no fue recibida de drogueria.`,
           faltaStock: true,
@@ -376,7 +390,9 @@ export const solicitarDrogueria = async (req, res) => {
       pa = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
     }
     if (!pa && pedido.principioActivoTexto) {
-      const nombreTexto = pedido.principioActivoTexto.trim();
+      const nombreTexto = pedido.principioActivoTexto
+        .replace(/(?:\d+\s*(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b)|\b(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b|\d+/gi, '')
+        .trim();
       pa = await db.PrincipioActivo.findOne({
         where: {
           nombre: { [Op.like]: `%${nombreTexto}%` }
@@ -385,7 +401,7 @@ export const solicitarDrogueria = async (req, res) => {
       if (!pa) {
         pa = await db.PrincipioActivo.create({
           nombre: nombreTexto,
-          stockDisponible: 0
+          stockDisponible: 0.00
         });
       }
       await pedido.update({ principioActivoId: pa.id });
@@ -394,6 +410,8 @@ export const solicitarDrogueria = async (req, res) => {
     if (!pa) {
       return res.status(400).json({ error: 'El pedido no tiene un principio activo registrado.' });
     }
+
+    const gramosRequeridos = calcularGramosRequeridos(pedido.dosis, pedido.csp);
 
     let solicitud = await db.PedidoDrogueria.findOne({
       where: {
@@ -406,12 +424,13 @@ export const solicitarDrogueria = async (req, res) => {
       solicitud = await db.PedidoDrogueria.create({
         pedidoId: pedido.id,
         principioActivoId: pa.id,
-        cantidadSolicitada: pedido.csp || '30 comprimidos',
+        cantidadSolicitada: `Envase materia prima x 100 g (Requerido: ${gramosRequeridos} g)`,
         estadoSolicitud: 'pendiente',
         respuestaApi: JSON.stringify({
           origen: 'solicitud_manual_laboratorio',
           pedidoId: pedido.id,
           principioActivo: pa.nombre,
+          gramosRequeridos,
           fecha: new Date().toISOString()
         })
       });

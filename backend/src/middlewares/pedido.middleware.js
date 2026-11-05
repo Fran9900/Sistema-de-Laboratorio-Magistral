@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import db from '../config/db.js';
 import validarById from './validarByIdGenerico.middleware.js';
+import { calcularGramosRequeridos } from '../utils/calculoFarmaceutico.js';
 
 export const validarReceta = async (req, res, next) => {
   try {
@@ -32,11 +33,15 @@ export const validarReceta = async (req, res, next) => {
 
 export const verificarStockPrincipioActivo = async (req, res, next) => {
   try {
-    let { principioActivoId, principioActivoTexto } = req.body;
+    let { principioActivoId, principioActivoTexto, dosis, csp } = req.body;
+    const gramosRequeridos = calcularGramosRequeridos(dosis, csp);
+    req.gramosRequeridos = gramosRequeridos;
 
     if (!principioActivoId) {
       if (principioActivoTexto && String(principioActivoTexto).trim() !== '') {
-        const nombreTexto = String(principioActivoTexto).trim();
+        const nombreTexto = String(principioActivoTexto)
+          .replace(/(?:\d+\s*(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b)|\b(?:mg|g|gr|gramos|mcg|ug|µg|ml)\b|\d+/gi, '')
+          .trim();
         let pa = await db.PrincipioActivo.findOne({
           where: {
             nombre: { [Op.like]: `%${nombreTexto}%` }
@@ -45,12 +50,12 @@ export const verificarStockPrincipioActivo = async (req, res, next) => {
         if (!pa) {
           pa = await db.PrincipioActivo.create({
             nombre: nombreTexto,
-            stockDisponible: 0
+            stockDisponible: 0.00
           });
         }
         req.principioActivo = pa;
         req.body.principioActivoId = pa.id;
-        req.tieneStock = Number(pa.stockDisponible || 0) > 0;
+        req.tieneStock = Number(pa.stockDisponible || 0) >= gramosRequeridos;
         return next();
       }
       return res.status(400).json({ error: 'El campo principioActivoId o principioActivoTexto es obligatorio.' });
@@ -63,7 +68,7 @@ export const verificarStockPrincipioActivo = async (req, res, next) => {
     }
 
     req.principioActivo = principioActivo;
-    req.tieneStock = Number(principioActivo.stockDisponible || 0) > 0;
+    req.tieneStock = Number(principioActivo.stockDisponible || 0) >= gramosRequeridos;
 
     next();
   } catch (error) {
