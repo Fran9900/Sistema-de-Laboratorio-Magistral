@@ -7,13 +7,14 @@ import {
   FlaskConical, 
   RefreshCw, 
   Filter, 
-  Calendar, 
-  User, 
+  Boxes, 
   ShieldAlert,
   Loader2,
-  ChevronRight
+  PackageCheck
 } from 'lucide-react';
 import api from '../../services/api.js';
+import FaltaStockModal from './FaltaStockModal.jsx';
+import InventarioStockModal from './InventarioStockModal.jsx';
 
 export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   const [pedidos, setPedidos] = useState([]);
@@ -22,6 +23,9 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   const [soloUrgentes, setSoloUrgentes] = useState(false);
   const [errorLocal, setErrorLocal] = useState(null);
   const [actualizandoId, setActualizandoId] = useState(null);
+
+  const [pedidoFaltaStock, setPedidoFaltaStock] = useState(null);
+  const [inventarioAbierto, setInventarioAbierto] = useState(false);
 
   const cargarPedidos = async () => {
     setCargando(true);
@@ -41,17 +45,53 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
     cargarPedidos();
   }, []);
 
-  const handleIniciarPreparacion = async (pedidoId) => {
-    setActualizandoId(pedidoId);
+  const handleIniciarPreparacion = async (pedido) => {
+    const stock = Number(pedido.principioActivo?.stockDisponible || 0);
+
+    if (stock <= 0) {
+      setPedidoFaltaStock(pedido);
+      return;
+    }
+
+    setActualizandoId(pedido.id);
     try {
-      await api.patch(`/pedidos/${pedidoId}/estado`, {
+      await api.patch(`/pedidos/${pedido.id}/estado`, {
         estadoPedido: 'en_preparacion'
       });
       await cargarPedidos();
     } catch (err) {
-      setErrorLocal('No se pudo iniciar la preparacion: ' + (err.response?.data?.error || err.message));
+      if (err.response?.data?.faltaStock) {
+        setPedidoFaltaStock(pedido);
+      } else {
+        setErrorLocal('No se pudo iniciar la preparacion: ' + (err.response?.data?.error || err.message));
+      }
     } finally {
       setActualizandoId(null);
+    }
+  };
+
+  const handleIntentarFinalizar = (pedido) => {
+    const stock = Number(pedido.principioActivo?.stockDisponible || 0);
+    if (stock <= 0) {
+      setPedidoFaltaStock(pedido);
+      return;
+    }
+    if (onFinalizarPreparado) {
+      onFinalizarPreparado(pedido);
+    }
+  };
+
+  const handleStockActualizadoDesdeModal = async (pedidoId) => {
+    await cargarPedidos();
+    if (pedidoId) {
+      try {
+        await api.patch(`/pedidos/${pedidoId}/estado`, {
+          estadoPedido: 'en_preparacion'
+        });
+        await cargarPedidos();
+      } catch (err) {
+        console.warn('Preparacion manual requerida tras ingreso de stock:', err.message);
+      }
     }
   };
 
@@ -65,6 +105,9 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
     }
     if (filtroEstado === 'listo_retiro') {
       return p.estadoPedido === 'listo_retiro';
+    }
+    if (filtroEstado === 'sin_stock') {
+      return Number(p.principioActivo?.stockDisponible || 0) <= 0 && ['ingresado', 'en_preparacion'].includes(p.estadoPedido);
     }
     return true;
   });
@@ -82,27 +125,37 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-xs text-xs">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-xs text-xs">
             <ShieldAlert className="w-4 h-4 text-rose-600" />
             <span className="font-medium text-slate-600">Urgencias:</span>
             <span className="font-bold text-rose-700">{totalUrgentes}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-xs text-xs">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-xs text-xs">
             <FlaskConical className="w-4 h-4 text-amber-600" />
             <span className="font-medium text-slate-600">En Preparacion:</span>
             <span className="font-bold text-amber-700">{totalEnProceso}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-xs text-xs">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-xs text-xs">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span className="font-medium text-slate-600">Listos:</span>
             <span className="font-bold text-emerald-700">{totalListos}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setInventarioAbierto(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors cursor-pointer"
+            title="Abrir catálogo e inventario general de materias primas"
+          >
+            <Boxes className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Inventario / Stock</span>
+          </button>
+
           <button
             type="button"
             onClick={cargarPedidos}
@@ -143,11 +196,12 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
             <select
               value={filtroEstado}
               onChange={(e) => setFiltroEstado(e.target.value)}
-              className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-slate-800"
+              className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-slate-800 font-medium"
             >
               <option value="activos">Cola Activa (Ingresados y En Proceso)</option>
               <option value="en_preparacion">Solo En Preparacion</option>
               <option value="listo_retiro">Listos para Retiro</option>
+              <option value="sin_stock">Falta de Stock (Esperando Droguería)</option>
               <option value="todos">Todos los pedidos</option>
             </select>
           </div>
@@ -185,6 +239,8 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                   const fechaRetiro = new Date(pedido.diaHoraRetiro);
                   const droga = pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Droga Magistral';
                   const esUrgente = pedido.urgente;
+                  const stockDisponible = Number(pedido.principioActivo?.stockDisponible || 0);
+                  const sinStock = stockDisponible <= 0 && ['ingresado', 'en_preparacion'].includes(pedido.estadoPedido);
 
                   return (
                     <tr
@@ -218,7 +274,18 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                         <div className="text-[11px] text-slate-400">{pedido.telefonoCliente}</div>
                       </td>
                       <td className="py-3 px-3 font-medium text-slate-800">
-                        {droga}
+                        <div>{droga}</div>
+                        {sinStock && (
+                          <button
+                            type="button"
+                            onClick={() => setPedidoFaltaStock(pedido)}
+                            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
+                            title="Materia prima sin stock. Clic para gestionar droguería o reabastecer stock."
+                          >
+                            <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+                            <span>Sin Stock ({stockDisponible} u.)</span>
+                          </button>
+                        )}
                       </td>
                       <td className="py-3 px-3 text-slate-600">
                         <div>{pedido.dosis}</div>
@@ -260,12 +327,19 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                           {pedido.estadoPedido === 'ingresado' && (
                             <button
                               type="button"
-                              onClick={() => handleIniciarPreparacion(pedido.id)}
+                              onClick={() => handleIniciarPreparacion(pedido)}
                               disabled={actualizandoId === pedido.id}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg shadow-xs transition-colors disabled:opacity-50 text-[11px]"
+                              className={`inline-flex items-center gap-1 px-3 py-1 font-medium rounded-lg shadow-xs transition-colors disabled:opacity-50 text-[11px] ${
+                                sinStock
+                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                  : 'bg-amber-600 hover:bg-amber-700 text-white'
+                              }`}
+                              title={sinStock ? 'Verificar stock de materia prima' : 'Iniciar formulación'}
                             >
                               {actualizandoId === pedido.id ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : sinStock ? (
+                                <AlertTriangle className="w-3 h-3 text-amber-200" />
                               ) : (
                                 <FlaskConical className="w-3 h-3" />
                               )}
@@ -273,13 +347,22 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                             </button>
                           )}
 
-                          {pedido.estadoPedido === 'en_preparacion' && onFinalizarPreparado && (
+                          {pedido.estadoPedido === 'en_preparacion' && (
                             <button
                               type="button"
-                              onClick={() => onFinalizarPreparado(pedido)}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-xs transition-colors text-[11px]"
+                              onClick={() => handleIntentarFinalizar(pedido)}
+                              className={`inline-flex items-center gap-1 px-3 py-1 font-medium rounded-lg shadow-xs transition-colors text-[11px] ${
+                                sinStock
+                                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`}
+                              title={sinStock ? 'Falta stock para finalizar preparado' : 'Finalizar y asignar folio de Libro Recetario'}
                             >
-                              <CheckCircle2 className="w-3 h-3" />
+                              {sinStock ? (
+                                <AlertTriangle className="w-3 h-3 text-rose-200" />
+                              ) : (
+                                <CheckCircle2 className="w-3 h-3" />
+                              )}
                               <span>Finalizar</span>
                             </button>
                           )}
@@ -293,6 +376,19 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
           </div>
         )}
       </div>
+
+      <FaltaStockModal
+        isOpen={Boolean(pedidoFaltaStock)}
+        pedido={pedidoFaltaStock}
+        onClose={() => setPedidoFaltaStock(null)}
+        onStockActualizado={handleStockActualizadoDesdeModal}
+      />
+
+      <InventarioStockModal
+        isOpen={inventarioAbierto}
+        onClose={() => setInventarioAbierto(false)}
+        onStockModificado={cargarPedidos}
+      />
     </div>
   );
 }

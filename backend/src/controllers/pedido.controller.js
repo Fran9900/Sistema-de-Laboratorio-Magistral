@@ -50,7 +50,7 @@ export const createPedido = async (req, res) => {
 
     const nuevoPedido = await db.Pedido.create({
       recetaId,
-      principioActivoId: principioActivoId ? Number(principioActivoId) : null,
+      principioActivoId: principioActivo ? principioActivo.id : (principioActivoId ? Number(principioActivoId) : null),
       principioActivoTexto: principioActivoTexto ? String(principioActivoTexto).trim() : null,
       nombreCliente,
       dniCliente: dniCliente || null,
@@ -110,8 +110,7 @@ export const getPedidoById = async (req, res) => {
         { model: db.Receta, as: 'receta' },
         { model: db.PrincipioActivo, as: 'principioActivo' },
         { model: db.Pago, as: 'pago' },
-        { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' },
-        { model: db.Reclamo, as: 'reclamos' }
+        { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' }
       ]
     });
     return res.status(200).json(pedido);
@@ -178,12 +177,12 @@ export const registrarPago = async (req, res) => {
       fechaValidacion: esEfectivo ? new Date() : null
     });
 
-    if (esEfectivo) {
-      await pedido.update({ estadoPedido: 'en_preparacion' });
+    if (esEfectivo && pedido.estadoPedido === 'pendiente_pago') {
+      await pedido.update({ estadoPedido: 'ingresado' });
     }
 
     return res.status(201).json({
-      mensaje: esEfectivo ? 'Pago presencial registrado y validado.' : 'Comprobante recibido, pendiente de revision.',
+      mensaje: esEfectivo ? 'Pago en efectivo registrado y validado.' : 'Comprobante recibido. Pendiente de validacion.',
       pago: nuevoPago
     });
   } catch (error) {
@@ -277,11 +276,56 @@ export const actualizarEstadoPedido = async (req, res) => {
       });
     }
 
+    if (estadoPedido === 'en_preparacion') {
+      let pa = null;
+      if (pedido.principioActivoId) {
+        pa = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
+      }
+      if (!pa && pedido.principioActivoTexto) {
+        const nombreTexto = pedido.principioActivoTexto.trim();
+        pa = await db.PrincipioActivo.findOne({
+          where: {
+            nombre: { [Op.like]: `%${nombreTexto}%` }
+          }
+        });
+        if (!pa) {
+          pa = await db.PrincipioActivo.create({
+            nombre: nombreTexto,
+            stockDisponible: 0
+          });
+        }
+        await pedido.update({ principioActivoId: pa.id });
+      }
+
+      if (pa && Number(pa.stockDisponible || 0) <= 0) {
+        return res.status(400).json({
+          error: `No se puede iniciar la preparacion. Falta de stock de ${pa.nombre}. Se requiere reposicion de drogueria.`,
+          faltaStock: true,
+          principioActivo: pa
+        });
+      }
+
+      if (pa && pedido.estadoPedido !== 'en_preparacion') {
+        const stockActual = Number(pa.stockDisponible || 0);
+        const nuevoStock = Math.max(0, stockActual - 1);
+        await pa.update({ stockDisponible: nuevoStock });
+      }
+    }
+
     await pedido.update({ estadoPedido });
+
+    const pedidoActualizado = await db.Pedido.findByPk(pedido.id, {
+      include: [
+        { model: db.Receta, as: 'receta' },
+        { model: db.PrincipioActivo, as: 'principioActivo' },
+        { model: db.Pago, as: 'pago' },
+        { model: db.PedidoDrogueria, as: 'solicitudesDrogueria' }
+      ]
+    });
 
     return res.status(200).json({
       mensaje: 'Estado del pedido actualizado a ' + estadoPedido,
-      pedido
+      pedido: pedidoActualizado
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -299,6 +343,17 @@ export const finalizarPreparado = async (req, res) => {
       });
     }
 
+    if (pedido.principioActivoId) {
+      const pa = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
+      if (pa && Number(pa.stockDisponible || 0) <= 0) {
+        return res.status(400).json({
+          error: `No se puede finalizar la orden. Falta stock de ${pa.nombre}. La materia prima no fue recibida de drogueria.`,
+          faltaStock: true,
+          principioActivo: pa
+        });
+      }
+    }
+
     await pedido.update({
       numeroPreparado: String(numeroPreparado).trim(),
       estadoPedido: 'listo_retiro'
@@ -313,6 +368,64 @@ export const finalizarPreparado = async (req, res) => {
   }
 };
 
+export const solicitarDrogueria = async (req, res) => {
+  try {
+    const pedido = req.recurso;
+    let pa = null;
+    if (pedido.principioActivoId) {
+      pa = await db.PrincipioActivo.findByPk(pedido.principioActivoId);
+    }
+    if (!pa && pedido.principioActivoTexto) {
+      const nombreTexto = pedido.principioActivoTexto.trim();
+      pa = await db.PrincipioActivo.findOne({
+        where: {
+          nombre: { [Op.like]: `%${nombreTexto}%` }
+        }
+      });
+      if (!pa) {
+        pa = await db.PrincipioActivo.create({
+          nombre: nombreTexto,
+          stockDisponible: 0
+        });
+      }
+      await pedido.update({ principioActivoId: pa.id });
+    }
+
+    if (!pa) {
+      return res.status(400).json({ error: 'El pedido no tiene un principio activo registrado.' });
+    }
+
+    let solicitud = await db.PedidoDrogueria.findOne({
+      where: {
+        pedidoId: pedido.id,
+        principioActivoId: pa.id
+      }
+    });
+
+    if (!solicitud) {
+      solicitud = await db.PedidoDrogueria.create({
+        pedidoId: pedido.id,
+        principioActivoId: pa.id,
+        cantidadSolicitada: pedido.csp || '30 comprimidos',
+        estadoSolicitud: 'pendiente',
+        respuestaApi: JSON.stringify({
+          origen: 'solicitud_manual_laboratorio',
+          pedidoId: pedido.id,
+          principioActivo: pa.nombre,
+          fecha: new Date().toISOString()
+        })
+      });
+    }
+
+    return res.status(200).json({
+      mensaje: `Solicitud de ${pa.nombre} enviada a drogueria con exito.`,
+      solicitud
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 export default {
   createPedido,
   getPedidoById,
@@ -321,5 +434,7 @@ export default {
   entregarPedido,
   cambiarUrgenciaPedido,
   actualizarEstadoPedido,
-  finalizarPreparado
+  finalPreparado: finalizarPreparado,
+  finalizarPreparado,
+  solicitarDrogueria
 };

@@ -12,7 +12,8 @@ import {
   entregarPedido,
   cambiarUrgenciaPedido,
   actualizarEstadoPedido,
-  finalizarPreparado
+  finalizarPreparado,
+  solicitarDrogueria
 } from '../controllers/pedido.controller.js';
 
 const router = Router();
@@ -147,6 +148,7 @@ router.post('/:id/entregar', validarPedidoById, entregarPedido);
 router.patch('/:id/urgencia', validarPedidoById, cambiarUrgenciaPedido);
 router.patch('/:id/estado', validarPedidoById, actualizarEstadoPedido);
 router.patch('/:id/finalizar', validarPedidoById, finalizarPreparado);
+router.post('/:id/drogueria', validarPedidoById, solicitarDrogueria);
 
 /**
  * @swagger

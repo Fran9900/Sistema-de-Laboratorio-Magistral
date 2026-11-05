@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import db from '../config/db.js';
 import validarById from './validarByIdGenerico.middleware.js';
 
@@ -31,12 +32,25 @@ export const validarReceta = async (req, res, next) => {
 
 export const verificarStockPrincipioActivo = async (req, res, next) => {
   try {
-    const { principioActivoId, principioActivoTexto } = req.body;
+    let { principioActivoId, principioActivoTexto } = req.body;
 
     if (!principioActivoId) {
       if (principioActivoTexto && String(principioActivoTexto).trim() !== '') {
-        req.principioActivo = null;
-        req.tieneStock = false;
+        const nombreTexto = String(principioActivoTexto).trim();
+        let pa = await db.PrincipioActivo.findOne({
+          where: {
+            nombre: { [Op.like]: `%${nombreTexto}%` }
+          }
+        });
+        if (!pa) {
+          pa = await db.PrincipioActivo.create({
+            nombre: nombreTexto,
+            stockDisponible: 0
+          });
+        }
+        req.principioActivo = pa;
+        req.body.principioActivoId = pa.id;
+        req.tieneStock = Number(pa.stockDisponible || 0) > 0;
         return next();
       }
       return res.status(400).json({ error: 'El campo principioActivoId o principioActivoTexto es obligatorio.' });
