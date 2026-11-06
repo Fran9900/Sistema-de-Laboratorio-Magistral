@@ -327,7 +327,8 @@ export default function SideBySideView({ recetaData, onVolver, onPedidoCreado })
         principioActivoTexto: formData.principioActivoTexto ? String(formData.principioActivoTexto).trim() : null,
         dosis: formData.dosis,
         csp: formData.csp,
-        urgente: formData.urgente
+        urgente: formData.urgente,
+        estadoPedido: formData.estadoPedido || 'pendiente_pago'
       };
 
       const resPedido = await api.post('/pedidos', payloadPedido);

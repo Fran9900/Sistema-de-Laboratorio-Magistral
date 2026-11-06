@@ -1,27 +1,28 @@
-import React, { useState } from 'react';
-import { 
-  Search, 
-  Phone, 
-  User, 
-  Calendar, 
-  Clock, 
-  AlertCircle, 
-  CheckCircle2, 
-  MessageSquare, 
-  Save, 
-  Edit3, 
-  X, 
-  Loader2, 
+import React, { useState } from "react";
+import {
+  Search,
+  Phone,
+  User,
+  Calendar,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  MessageSquare,
+  Save,
+  Edit3,
+  X,
+  Loader2,
   ShieldCheck,
   AlertTriangle,
   FileText,
-  PackageCheck
-} from 'lucide-react';
-import api from '../../services/api.js';
-import RetiroPedidoModal from './RetiroPedidoModal.jsx';
+  PackageCheck,
+} from "lucide-react";
+import api from "../../services/api.js";
+import RetiroPedidoModal from "./RetiroPedidoModal.jsx";
+import PagoModal from "./PagoModal.jsx";
 
 export default function BusquedaCliente() {
-  const [termino, setTermino] = useState('');
+  const [termino, setTermino] = useState("");
   const [pedidos, setPedidos] = useState([]);
   const [buscado, setBuscado] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -29,15 +30,22 @@ export default function BusquedaCliente() {
   const [errorLocal, setErrorLocal] = useState(null);
 
   const [pedidoEditando, setPedidoEditando] = useState(null);
-  const [telefonoNuevo, setTelefonoNuevo] = useState('');
+  const [telefonoNuevo, setTelefonoNuevo] = useState("");
   const [guardandoContacto, setGuardandoContacto] = useState(false);
 
   const [pedidoReclamo, setPedidoReclamo] = useState(null);
-  const [motivoReclamo, setMotivoReclamo] = useState('');
-  const [descripcionReclamo, setDescripcionReclamo] = useState('');
+  const [motivoReclamo, setMotivoReclamo] = useState("");
+  const [descripcionReclamo, setDescripcionReclamo] = useState("");
   const [guardandoReclamo, setGuardandoReclamo] = useState(false);
 
   const [pedidoRetiro, setPedidoRetiro] = useState(null);
+
+  const [pedidoAPagar, setPedidoAPagar] = useState(null);
+
+  const handlePagoExitoso = () => {
+    setPedidoAPagar(null);
+    handleBuscar();
+  };
 
   const handleBuscar = async (e) => {
     if (e) e.preventDefault();
@@ -48,11 +56,15 @@ export default function BusquedaCliente() {
     setMensajeExito(null);
 
     try {
-      const response = await api.get(`/clientes/buscar?termino=${encodeURIComponent(termino.trim())}`);
+      const response = await api.get(
+        `/clientes/buscar?termino=${encodeURIComponent(termino.trim())}`,
+      );
       setPedidos(Array.isArray(response.data) ? response.data : []);
       setBuscado(true);
     } catch (err) {
-      setErrorLocal(err.response?.data?.error || 'Error al realizar la busqueda.');
+      setErrorLocal(
+        err.response?.data?.error || "Error al realizar la busqueda.",
+      );
       setPedidos([]);
     } finally {
       setCargando(false);
@@ -61,14 +73,14 @@ export default function BusquedaCliente() {
 
   const handleIniciarEdicionContacto = (pedido) => {
     setPedidoEditando(pedido);
-    setTelefonoNuevo(pedido.telefonoCliente || '');
+    setTelefonoNuevo(pedido.telefonoCliente || "");
     setErrorLocal(null);
   };
 
   const handleGuardarContacto = async (e) => {
     e.preventDefault();
     if (!telefonoNuevo.trim()) {
-      setErrorLocal('El telefono no puede quedar vacio.');
+      setErrorLocal("El telefono no puede quedar vacio.");
       return;
     }
 
@@ -77,20 +89,24 @@ export default function BusquedaCliente() {
 
     try {
       await api.patch(`/clientes/pedidos/${pedidoEditando.id}/contacto`, {
-        telefonoCliente: telefonoNuevo.trim()
+        telefonoCliente: telefonoNuevo.trim(),
       });
 
-      setPedidos(prev => prev.map(p => {
-        if (p.id === pedidoEditando.id) {
-          return { ...p, telefonoCliente: telefonoNuevo.trim() };
-        }
-        return p;
-      }));
+      setPedidos((prev) =>
+        prev.map((p) => {
+          if (p.id === pedidoEditando.id) {
+            return { ...p, telefonoCliente: telefonoNuevo.trim() };
+          }
+          return p;
+        }),
+      );
 
-      setMensajeExito('Telefono de contacto actualizado correctamente.');
+      setMensajeExito("Telefono de contacto actualizado correctamente.");
       setPedidoEditando(null);
     } catch (err) {
-      setErrorLocal(err.response?.data?.error || 'Error al actualizar contacto.');
+      setErrorLocal(
+        err.response?.data?.error || "Error al actualizar contacto.",
+      );
     } finally {
       setGuardandoContacto(false);
     }
@@ -98,15 +114,15 @@ export default function BusquedaCliente() {
 
   const handleAbrirReclamo = (pedido) => {
     setPedidoReclamo(pedido);
-    setMotivoReclamo('');
-    setDescripcionReclamo('');
+    setMotivoReclamo("");
+    setDescripcionReclamo("");
     setErrorLocal(null);
   };
 
   const handleGuardarReclamo = async (e) => {
     e.preventDefault();
     if (!motivoReclamo.trim()) {
-      setErrorLocal('El motivo del reclamo es obligatorio.');
+      setErrorLocal("El motivo del reclamo es obligatorio.");
       return;
     }
 
@@ -114,57 +130,94 @@ export default function BusquedaCliente() {
     setErrorLocal(null);
 
     try {
-      const response = await api.post(`/clientes/pedidos/${pedidoReclamo.id}/reclamos`, {
-        motivo: motivoReclamo.trim(),
-        descripcion: descripcionReclamo.trim()
-      });
+      const response = await api.post(
+        `/clientes/pedidos/${pedidoReclamo.id}/reclamos`,
+        {
+          motivo: motivoReclamo.trim(),
+          descripcion: descripcionReclamo.trim(),
+        },
+      );
 
       const nuevo = response.data?.reclamo;
 
-      setPedidos(prev => prev.map(p => {
-        if (p.id === pedidoReclamo.id) {
-          const reclamosActuales = Array.isArray(p.reclamos) ? p.reclamos : [];
-          return { ...p, reclamos: [nuevo, ...reclamosActuales] };
-        }
-        return p;
-      }));
+      setPedidos((prev) =>
+        prev.map((p) => {
+          if (p.id === pedidoReclamo.id) {
+            const reclamosActuales = Array.isArray(p.reclamos)
+              ? p.reclamos
+              : [];
+            return { ...p, reclamos: [nuevo, ...reclamosActuales] };
+          }
+          return p;
+        }),
+      );
 
-      setMensajeExito('Reclamo registrado correctamente bajo estado abierto.');
+      setMensajeExito("Reclamo registrado correctamente bajo estado abierto.");
       setPedidoReclamo(null);
     } catch (err) {
-      setErrorLocal(err.response?.data?.error || 'Error al registrar el reclamo.');
+      setErrorLocal(
+        err.response?.data?.error || "Error al registrar el reclamo.",
+      );
     } finally {
       setGuardandoReclamo(false);
     }
   };
 
   const formatearFecha = (fechaStr) => {
-    if (!fechaStr) return '-';
-    return new Date(fechaStr).toLocaleString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!fechaStr) return "-";
+    return new Date(fechaStr).toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getBadgeEstado = (estado) => {
     switch (estado) {
-      case 'ingresado':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">Ingresado</span>;
-      case 'pendiente_pago':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Pendiente de Pago</span>;
-      case 'en_preparacion':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">En Preparacion</span>;
-      case 'listo_retiro':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Listo para Retiro</span>;
-      case 'entregado':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">Entregado</span>;
-      case 'cancelado':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">Cancelado</span>;
+      case "ingresado":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+            Ingresado
+          </span>
+        );
+      case "pendiente_pago":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+            Pendiente de Pago
+          </span>
+        );
+      case "en_preparacion":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+            En Preparacion
+          </span>
+        );
+      case "listo_retiro":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            Listo para Retiro
+          </span>
+        );
+      case "entregado":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+            Entregado
+          </span>
+        );
+      case "cancelado":
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+            Cancelado
+          </span>
+        );
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">{estado}</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+            {estado}
+          </span>
+        );
     }
   };
 
@@ -202,7 +255,11 @@ export default function BusquedaCliente() {
             disabled={cargando || !termino.trim()}
             className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer"
           >
-            {cargando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            {cargando ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
             <span>Buscar</span>
           </button>
         </form>
@@ -249,7 +306,8 @@ export default function BusquedaCliente() {
             No se encontraron pedidos asociados al termino ingresado.
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Verifique que el DNI del cliente o el PIN de control de 4 digitos sean correctos.
+            Verifique que el DNI del cliente o el PIN de control de 4 digitos
+            sean correctos.
           </p>
         </div>
       )}
@@ -279,17 +337,21 @@ export default function BusquedaCliente() {
                       )}
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
-                      <span>DNI: {pedido.dniCliente || 'No registrado'}</span>
-                      <span>Telefono: {pedido.telefonoCliente || 'No registrado'}</span>
+                      <span>DNI: {pedido.dniCliente || "No registrado"}</span>
+                      <span>
+                        Telefono: {pedido.telefonoCliente || "No registrado"}
+                      </span>
                       {pedido.numeroPreparado && (
-                        <span className="font-mono text-slate-700 font-medium">N° Prep: {pedido.numeroPreparado}</span>
+                        <span className="font-mono text-slate-700 font-medium">
+                          N° Prep: {pedido.numeroPreparado}
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {pedido.estadoPedido === 'listo_retiro' && (
+                  {pedido.estadoPedido === "listo_retiro" && (
                     <button
                       type="button"
                       onClick={() => setPedidoRetiro(pedido)}
@@ -309,6 +371,19 @@ export default function BusquedaCliente() {
                     <span>Actualizar Telefono</span>
                   </button>
 
+                  {pedido.estadoPedido === "pendiente_pago" ? (
+                    <button
+                      onClick={() => setPedidoAPagar(pedido.id)}
+                      className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700"
+                    >
+                      Registrar Cobro
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400 font-medium">
+                      Pago Acreditado
+                    </span>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => handleAbrirReclamo(pedido)}
@@ -322,9 +397,13 @@ export default function BusquedaCliente() {
 
               <div className="grid grid-cols-3 gap-4 text-xs">
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-                  <span className="text-slate-500 font-medium">Formula Magistral</span>
+                  <span className="text-slate-500 font-medium">
+                    Formula Magistral
+                  </span>
                   <p className="text-slate-900 font-semibold">
-                    {pedido.principioActivo?.nombre || pedido.principioActivoTexto || 'Formula personalizada'}
+                    {pedido.principioActivo?.nombre ||
+                      pedido.principioActivoTexto ||
+                      "Formula personalizada"}
                   </p>
                   <p className="text-slate-600">
                     Dosis: {pedido.dosis} | CSP: {pedido.csp}
@@ -332,9 +411,14 @@ export default function BusquedaCliente() {
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-                  <span className="text-slate-500 font-medium">Plazos y Horarios</span>
+                  <span className="text-slate-500 font-medium">
+                    Plazos y Horarios
+                  </span>
                   <p className="text-slate-900">
-                    <span className="font-medium text-slate-600">Retiro prometido:</span> {formatearFecha(pedido.diaHoraRetiro)}
+                    <span className="font-medium text-slate-600">
+                      Retiro prometido:
+                    </span>{" "}
+                    {formatearFecha(pedido.diaHoraRetiro)}
                   </p>
                   <p className="text-slate-600">
                     Ingresado: {formatearFecha(pedido.createdAt)}
@@ -342,12 +426,14 @@ export default function BusquedaCliente() {
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
-                  <span className="text-slate-500 font-medium">Estado de Cobro</span>
+                  <span className="text-slate-500 font-medium">
+                    Estado de Cobro
+                  </span>
                   <p className="text-slate-900 font-semibold">
-                    ${pedido.precio ? Number(pedido.precio).toFixed(2) : '0.00'}
+                    ${pedido.precio ? Number(pedido.precio).toFixed(2) : "0.00"}
                   </p>
                   <p className="text-slate-600">
-                    Medio: {pedido.pago?.medioPago || 'Pendiente de pago'}
+                    Medio: {pedido.pago?.medioPago || "Pendiente de pago"}
                   </p>
                 </div>
               </div>
@@ -364,7 +450,9 @@ export default function BusquedaCliente() {
                         className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-lg text-xs space-y-1"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-amber-900">{rec.motivo}</span>
+                          <span className="font-semibold text-amber-900">
+                            {rec.motivo}
+                          </span>
                           <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-[11px] font-medium capitalize">
                             {rec.estado}
                           </span>
@@ -408,7 +496,10 @@ export default function BusquedaCliente() {
             <form onSubmit={handleGuardarContacto} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Cliente: <span className="font-semibold">{pedidoEditando.nombreCliente}</span>
+                  Cliente:{" "}
+                  <span className="font-semibold">
+                    {pedidoEditando.nombreCliente}
+                  </span>
                 </label>
                 <input
                   type="text"
@@ -433,7 +524,11 @@ export default function BusquedaCliente() {
                   disabled={guardandoContacto || !telefonoNuevo.trim()}
                   className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  {guardandoContacto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {guardandoContacto ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   <span>Guardar Cambios</span>
                 </button>
               </div>
@@ -468,10 +563,14 @@ export default function BusquedaCliente() {
             <form onSubmit={handleGuardarReclamo} className="space-y-4">
               <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs space-y-1">
                 <p className="text-slate-700">
-                  <span className="font-semibold">Cliente:</span> {pedidoReclamo.nombreCliente}
+                  <span className="font-semibold">Cliente:</span>{" "}
+                  {pedidoReclamo.nombreCliente}
                 </p>
                 <p className="text-slate-700">
-                  <span className="font-semibold">Codigo PIN:</span> {pedidoReclamo.pinControl} | <span className="font-semibold">Estado:</span> {pedidoReclamo.estadoPedido}
+                  <span className="font-semibold">Codigo PIN:</span>{" "}
+                  {pedidoReclamo.pinControl} |{" "}
+                  <span className="font-semibold">Estado:</span>{" "}
+                  {pedidoReclamo.estadoPedido}
                 </p>
               </div>
 
@@ -515,7 +614,11 @@ export default function BusquedaCliente() {
                   disabled={guardandoReclamo || !motivoReclamo.trim()}
                   className="px-4 py-2 bg-rose-700 text-white rounded-lg text-xs font-semibold hover:bg-rose-800 disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  {guardandoReclamo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {guardandoReclamo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   <span>Asentar Reclamo</span>
                 </button>
               </div>
@@ -524,13 +627,27 @@ export default function BusquedaCliente() {
         </div>
       )}
 
+      {pedidoAPagar && (
+        <PagoModal
+          pedidoId={pedidoAPagar}
+          onClose={() => setPedidoAPagar(null)}
+          onPagoExitoso={handlePagoExitoso}
+        />
+      )}
+
       <RetiroPedidoModal
         isOpen={Boolean(pedidoRetiro)}
         onClose={() => setPedidoRetiro(null)}
         pedido={pedidoRetiro}
         onPedidoEntregado={(pedidoActualizado) => {
-          setPedidos(prev => prev.map(p => p.id === pedidoActualizado.id ? pedidoActualizado : p));
-          setMensajeExito('Producto entregado con exito. Ciclo del preparado cerrado.');
+          setPedidos((prev) =>
+            prev.map((p) =>
+              p.id === pedidoActualizado.id ? pedidoActualizado : p,
+            ),
+          );
+          setMensajeExito(
+            "Producto entregado con exito. Ciclo del preparado cerrado.",
+          );
         }}
       />
     </section>

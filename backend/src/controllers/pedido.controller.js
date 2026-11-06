@@ -50,7 +50,7 @@ export const createPedido = async (req, res) => {
       return Boolean(existe);
     });
 
-    const estadoInicial = origenPedido === 'email' ? 'pendiente_pago' : 'ingresado';
+    const estadoInicial = origenPedido === 'email' || origenPedido === 'mostrador' ? 'pendiente_pago' : 'ingresado';
 
     const nuevoPedido = await db.Pedido.create({
       recetaId,
