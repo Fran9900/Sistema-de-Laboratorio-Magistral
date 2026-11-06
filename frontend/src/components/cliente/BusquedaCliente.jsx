@@ -371,7 +371,7 @@ export default function BusquedaCliente() {
                     <span>Actualizar Telefono</span>
                   </button>
 
-                  {pedido.estadoPedido === "pendiente_pago" ? (
+                  {(!pedido.pago || pedido.pago.estadoPago !== "validado") ? (
                     <button
                       onClick={() => setPedidoAPagar(pedido.id)}
                       className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700"
@@ -433,7 +433,7 @@ export default function BusquedaCliente() {
                     ${pedido.precio ? Number(pedido.precio).toFixed(2) : "0.00"}
                   </p>
                   <p className="text-slate-600">
-                    Medio: {pedido.pago?.medioPago || "Pendiente de pago"}
+                    Medio: {pedido.pago?.metodoPago ? `${pedido.pago.metodoPago.toUpperCase()} (${pedido.pago.estadoPago})` : "Pendiente de pago"}
                   </p>
                 </div>
               </div>

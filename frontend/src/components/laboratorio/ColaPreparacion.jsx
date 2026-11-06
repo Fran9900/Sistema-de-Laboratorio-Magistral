@@ -95,7 +95,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   const pedidosFiltrados = pedidos.filter(p => {
     if (soloUrgentes && !p.urgente) return false;
     if (filtroEstado === 'activos') {
-      return ['ingresado', 'en_preparacion'].includes(p.estadoPedido);
+      return ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido);
     }
     if (filtroEstado === 'en_preparacion') {
       return p.estadoPedido === 'en_preparacion';
@@ -106,7 +106,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
     if (filtroEstado === 'sin_stock') {
       const stock = Number(p.principioActivo?.stockDisponible || 0);
       const req = calcularGramosRequeridos(p.dosis, p.csp);
-      return stock < req && ['ingresado', 'en_preparacion'].includes(p.estadoPedido);
+      return stock < req && ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido);
     }
     return true;
   });
@@ -117,7 +117,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
     return new Date(a.diaHoraRetiro) - new Date(b.diaHoraRetiro);
   });
 
-  const totalUrgentes = pedidos.filter(p => p.urgente && ['ingresado', 'en_preparacion'].includes(p.estadoPedido)).length;
+  const totalUrgentes = pedidos.filter(p => p.urgente && ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido)).length;
   const totalEnProceso = pedidos.filter(p => p.estadoPedido === 'en_preparacion').length;
   const totalListos = pedidos.filter(p => p.estadoPedido === 'listo_retiro').length;
 
@@ -240,7 +240,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                   const esUrgente = pedido.urgente;
                   const stockDisponible = Number(pedido.principioActivo?.stockDisponible || 0);
                   const gramosRequeridos = calcularGramosRequeridos(pedido.dosis, pedido.csp);
-                  const sinStock = stockDisponible < gramosRequeridos && ['ingresado', 'en_preparacion'].includes(pedido.estadoPedido);
+                  const sinStock = stockDisponible < gramosRequeridos && ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(pedido.estadoPedido);
 
                   return (
                     <tr
@@ -306,9 +306,11 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                             ? 'bg-amber-50 text-amber-800 border border-amber-200'
                             : pedido.estadoPedido === 'listo_retiro'
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : pedido.estadoPedido === 'pendiente_pago'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
                             : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
-                          {pedido.estadoPedido}
+                          {pedido.estadoPedido === 'pendiente_pago' ? 'Pendiente Pago' : pedido.estadoPedido}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
@@ -324,7 +326,7 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
                             </button>
                           )}
 
-                          {pedido.estadoPedido === 'ingresado' && (
+                          {['ingresado', 'pendiente_pago'].includes(pedido.estadoPedido) && (
                             <button
                               type="button"
                               onClick={() => handleIniciarPreparacion(pedido)}

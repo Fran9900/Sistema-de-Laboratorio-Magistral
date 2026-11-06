@@ -16,6 +16,7 @@ export default function RetiroPedidoModal({ isOpen, onClose, pedido, onPedidoEnt
   const [pinIngresado, setPinIngresado] = useState('');
   const [cargando, setCargando] = useState(false);
   const [errorLocal, setErrorLocal] = useState(null);
+  const pagoValidado = pedido?.pago?.estadoPago === 'validado';
 
   if (!isOpen || !pedido) return null;
 
@@ -102,6 +103,13 @@ export default function RetiroPedidoModal({ isOpen, onClose, pedido, onPedidoEnt
           </div>
         </div>
 
+        {!pagoValidado && (
+          <div role="alert" className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2.5 text-xs text-amber-800">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span>Pago Pendiente: Este preparado no puede ser retirado hasta que se registre y acredite el cobro.</span>
+          </div>
+        )}
+
         {errorLocal && (
           <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2.5 text-xs text-rose-800">
             <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
@@ -141,7 +149,7 @@ export default function RetiroPedidoModal({ isOpen, onClose, pedido, onPedidoEnt
             </button>
             <button
               type="submit"
-              disabled={cargando || pinIngresado.trim().length !== 4}
+              disabled={cargando || pinIngresado.trim().length !== 4 || !pagoValidado}
               className="px-5 py-2 bg-emerald-700 text-white rounded-lg text-xs font-semibold hover:bg-emerald-800 disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
             >
               {cargando ? <Loader2 className="w-4 h-4 animate-spin" /> : <PackageCheck className="w-4 h-4" />}

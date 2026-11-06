@@ -172,23 +172,32 @@ export const registrarPago = async (req, res) => {
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
 
-    const esEfectivo = metodoPago === 'efectivo';
+    let pago = await db.Pago.findOne({ where: { pedidoId } });
 
-    const nuevoPago = await db.Pago.create({
-      pedidoId,
-      metodoPago,
-      estadoPago: esEfectivo ? 'validado' : 'pendiente',
-      comprobanteUrl: esEfectivo ? null : comprobanteUrl,
-      fechaValidacion: esEfectivo ? new Date() : null
-    });
+    if (pago) {
+      await pago.update({
+        metodoPago,
+        estadoPago: 'validado',
+        comprobanteUrl: comprobanteUrl || pago.comprobanteUrl,
+        fechaValidacion: new Date()
+      });
+    } else {
+      pago = await db.Pago.create({
+        pedidoId,
+        metodoPago,
+        estadoPago: 'validado',
+        comprobanteUrl: comprobanteUrl || null,
+        fechaValidacion: new Date()
+      });
+    }
 
-    if (esEfectivo && pedido.estadoPedido === 'pendiente_pago') {
+    if (pedido.estadoPedido === 'pendiente_pago') {
       await pedido.update({ estadoPedido: 'ingresado' });
     }
 
     return res.status(201).json({
-      mensaje: esEfectivo ? 'Pago en efectivo registrado y validado.' : 'Comprobante recibido. Pendiente de validacion.',
-      pago: nuevoPago
+      mensaje: 'Pago por ' + metodoPago + ' registrado y validado con exito.',
+      pago
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -207,6 +216,19 @@ export const entregarPedido = async (req, res) => {
     if (pedido.estadoPedido !== 'listo_retiro') {
       return res.status(400).json({
         error: 'El preparado no se encuentra listo para retiro. Estado actual: ' + pedido.estadoPedido
+      });
+    }
+
+    const pago = await db.Pago.findOne({
+      where: {
+        pedidoId: pedido.id,
+        estadoPago: 'validado'
+      }
+    });
+
+    if (!pago) {
+      return res.status(400).json({
+        error: 'El preparado no puede ser entregado: el pago se encuentra pendiente de acreditacion o validacion.'
       });
     }
 
