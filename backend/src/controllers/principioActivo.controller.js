@@ -19,6 +19,20 @@ export const getPrincipiosActivos = async (req, res) => {
   }
 };
 
+export function normalizarNombrePrincipioActivo(texto) {
+  if (!texto) return '';
+  let s = String(texto).trim().toLowerCase();
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.replace(/0/g, 'o')
+       .replace(/1/g, 'i')
+       .replace(/3/g, 'e')
+       .replace(/4/g, 'a')
+       .replace(/5/g, 's')
+       .replace(/@/g, 'a');
+  s = s.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 export const registrarPrincipioActivo = async (req, res) => {
   try {
     const { nombre, stockDisponible } = req.body;
@@ -33,9 +47,27 @@ export const registrarPrincipioActivo = async (req, res) => {
       });
     }
 
+    const cantidadStock = stockDisponible !== undefined ? Number(stockDisponible) : 0;
+    if (isNaN(cantidadStock) || cantidadStock <= 0) {
+      return res.status(400).json({
+        message: "Debe ingresar una cantidad de stock inicial mayor a 0 g."
+      });
+    }
+
+    const todos = await db.PrincipioActivo.findAll();
+    const canonicoNuevo = normalizarNombrePrincipioActivo(nombreLimpio);
+    const duplicado = todos.find(p => normalizarNombrePrincipioActivo(p.nombre) === canonicoNuevo);
+    if (duplicado) {
+      return res.status(400).json({
+        message: `El principio activo ya existe en el catálogo bajo el nombre '${duplicado.nombre}'. No se permiten principios activos duplicados.`
+      });
+    }
+
+    const nombreFormateado = nombreLimpio.charAt(0).toUpperCase() + nombreLimpio.slice(1);
+
     const nuevoPrincipioActivo = await db.PrincipioActivo.create({
-      nombre: nombreLimpio,
-      stockDisponible: stockDisponible ? Number(stockDisponible) : 0,
+      nombre: nombreFormateado,
+      stockDisponible: cantidadStock,
     });
     return res.status(201).json({
       message: "Principio activo registrado correctamente",

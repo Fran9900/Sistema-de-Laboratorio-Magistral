@@ -196,6 +196,13 @@ export const getRecetaById = async (req, res) => {
 export const getRecetas = async (req, res) => {
   try {
     const recetas = await db.Receta.findAll({
+      include: [
+        {
+          model: db.Pedido,
+          as: 'pedido',
+          include: [{ model: db.PrincipioActivo, as: 'principioActivo' }]
+        }
+      ],
       order: [['id', 'DESC']]
     });
     return res.status(200).json(recetas);

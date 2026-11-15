@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  AlertTriangle, 
-  Clock, 
-  CheckCircle2, 
-  Eye, 
   FlaskConical, 
-  RefreshCw, 
-  Filter, 
+  Clock, 
+  AlertTriangle, 
+  CheckCircle2, 
   Boxes, 
+  RefreshCw, 
+  Eye, 
+  Filter, 
+  Search,
   ShieldAlert,
   Loader2,
-  PackageCheck
+  PackageCheck,
+  X
 } from 'lucide-react';
 import api from '../../services/api.js';
 import FaltaStockModal from './FaltaStockModal.jsx';
@@ -22,6 +24,8 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
   const [cargando, setCargando] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('activos');
   const [soloUrgentes, setSoloUrgentes] = useState(false);
+  const [busquedaControl, setBusquedaControl] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('');
   const [errorLocal, setErrorLocal] = useState(null);
   const [actualizandoId, setActualizandoId] = useState(null);
 
@@ -78,36 +82,40 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
     }
   };
 
-  const handleStockActualizadoDesdeModal = async (pedidoId) => {
+  const handleStockActualizadoDesdeModal = async () => {
     await cargarPedidos();
-    if (pedidoId) {
-      try {
-        await api.patch(`/pedidos/${pedidoId}/estado`, {
-          estadoPedido: 'en_preparacion'
-        });
-        await cargarPedidos();
-      } catch (err) {
-        console.warn('Preparacion manual requerida tras ingreso de stock:', err.message);
-      }
-    }
   };
 
   const pedidosFiltrados = pedidos.filter(p => {
     if (soloUrgentes && !p.urgente) return false;
+
     if (filtroEstado === 'activos') {
-      return ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido);
-    }
-    if (filtroEstado === 'en_preparacion') {
-      return p.estadoPedido === 'en_preparacion';
-    }
-    if (filtroEstado === 'listo_retiro') {
-      return p.estadoPedido === 'listo_retiro';
-    }
-    if (filtroEstado === 'sin_stock') {
+      if (!['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido)) return false;
+    } else if (filtroEstado === 'en_preparacion') {
+      if (p.estadoPedido !== 'en_preparacion') return false;
+    } else if (filtroEstado === 'listo_retiro') {
+      if (p.estadoPedido !== 'listo_retiro') return false;
+    } else if (filtroEstado === 'sin_stock') {
       const stock = Number(p.principioActivo?.stockDisponible || 0);
       const req = calcularGramosRequeridos(p.dosis, p.csp);
-      return stock < req && ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido);
+      if (!(stock < req && ['ingresado', 'pendiente_pago', 'en_preparacion'].includes(p.estadoPedido))) return false;
     }
+
+    if (busquedaControl.trim()) {
+      const q = busquedaControl.trim().toLowerCase();
+      const idStr = String(p.id || '');
+      const pinStr = String(p.pinControl || '').toLowerCase();
+      const clienteStr = String(p.nombreCliente || '').toLowerCase();
+      const drogaStr = String(p.principioActivo?.nombre || p.principioActivoTexto || '').toLowerCase();
+      const match = idStr.includes(q) || (`#${idStr}`).includes(q) || pinStr.includes(q) || clienteStr.includes(q) || drogaStr.includes(q);
+      if (!match) return false;
+    }
+
+    if (filtroFecha) {
+      const fechaRetiroIso = p.diaHoraRetiro ? p.diaHoraRetiro.split('T')[0] : '';
+      if (fechaRetiroIso !== filtroFecha) return false;
+    }
+
     return true;
   });
 
@@ -175,21 +183,47 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
       )}
 
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-500" />
-            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Filtros</span>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pb-3 border-b border-slate-100">
+          <div className="relative md:col-span-5">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Buscar por N° Control (PIN), ID, Cliente o Droga..."
+              value={busquedaControl}
+              onChange={(e) => setBusquedaControl(e.target.value)}
+              className="w-full text-xs pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-slate-800"
+            />
           </div>
 
-          <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700">
+          <div className="relative md:col-span-3 flex items-center">
+            <input
+              type="date"
+              value={filtroFecha}
+              onChange={(e) => setFiltroFecha(e.target.value)}
+              title="Filtrar por fecha límite de retiro"
+              className="w-full text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-slate-800"
+            />
+            {filtroFecha && (
+              <button
+                type="button"
+                onClick={() => setFiltroFecha('')}
+                className="absolute right-2 p-0.5 text-slate-400 hover:text-slate-600"
+                title="Limpiar fecha"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="md:col-span-4 flex items-center justify-end gap-3">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-700 whitespace-nowrap">
               <input
                 type="checkbox"
                 checked={soloUrgentes}
                 onChange={(e) => setSoloUrgentes(e.target.checked)}
                 className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4"
               />
-              <span className="font-medium text-rose-800">Solo Urgencias Medicas</span>
+              <span className="font-semibold text-rose-700">Solo Urgentes</span>
             </label>
 
             <select
@@ -197,11 +231,11 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
               onChange={(e) => setFiltroEstado(e.target.value)}
               className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-slate-800 font-medium"
             >
-              <option value="activos">Cola Activa (Ingresados y En Proceso)</option>
-              <option value="en_preparacion">Solo En Preparacion</option>
+              <option value="activos">Cola Activa</option>
+              <option value="en_preparacion">En Preparación</option>
               <option value="listo_retiro">Listos para Retiro</option>
-              <option value="sin_stock">Falta de Stock (Esperando Droguería)</option>
-              <option value="todos">Todos los pedidos</option>
+              <option value="sin_stock">Falta de Stock</option>
+              <option value="todos">Todos los Pedidos</option>
             </select>
           </div>
         </div>
@@ -219,14 +253,14 @@ export default function ColaPreparacion({ onVerReceta, onFinalizarPreparado }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
+            <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[11px] bg-slate-50/50">
                   <th className="py-3 px-3">Prioridad</th>
-                  <th className="py-3 px-3">Orden #</th>
-                  <th className="py-3 px-3">PIN Control</th>
-                  <th className="py-3 px-3">Paciente</th>
-                  <th className="py-3 px-3">Formula Magistral</th>
+                  <th className="py-3 px-3">ID</th>
+                  <th className="py-3 px-3">N° Control</th>
+                  <th className="py-3 px-3">Paciente / Cliente</th>
+                  <th className="py-3 px-3">Droga Magistral</th>
                   <th className="py-3 px-3">Dosis / CSP</th>
                   <th className="py-3 px-3">Limite de Retiro</th>
                   <th className="py-3 px-3">Estado</th>

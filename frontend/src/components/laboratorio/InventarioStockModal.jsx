@@ -17,7 +17,7 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoStock, setNuevoStock] = useState('100');
+  const [nuevoStock, setNuevoStock] = useState('');
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [actualizandoId, setActualizandoId] = useState(null);
   const [errorLocal, setErrorLocal] = useState(null);
@@ -93,15 +93,21 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
       return;
     }
 
+    const cantidadInicial = parseFloat(nuevoStock);
+    if (isNaN(cantidadInicial) || cantidadInicial <= 0) {
+      setErrorLocal('Debe ingresar una cantidad de stock inicial mayor a 0 g.');
+      return;
+    }
+
     setGuardandoNuevo(true);
     setErrorLocal(null);
     try {
       await api.post('/principiosActivos', {
         nombre: nombreLimpio,
-        stockDisponible: parseFloat(nuevoStock) || 0
+        stockDisponible: cantidadInicial
       });
       setNuevoNombre('');
-      setNuevoStock('100');
+      setNuevoStock('');
       setNotificacion(`Materia prima '${nombreLimpio}' dada de alta con éxito.`);
       await cargarCatalogo();
       if (onStockModificado) onStockModificado();
@@ -130,11 +136,8 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900">
-                Inventario de Materias Primas y Principios Activos
+                Inventario
               </h3>
-              <p className="text-xs text-slate-500">
-                Control de existencias físicas para formulación magistral
-              </p>
             </div>
           </div>
           <button
@@ -182,7 +185,7 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
                   min="0"
                   value={nuevoStock}
                   onChange={(e) => setNuevoStock(e.target.value)}
-                  placeholder="Stock (g)"
+                  placeholder="0"
                   className="w-full pl-3 pr-7 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium text-center focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
                 <span className="absolute right-2.5 top-2.5 text-slate-400 text-xs pointer-events-none font-medium">g</span>
@@ -265,7 +268,7 @@ export default function InventarioStockModal({ isOpen, onClose, onStockModificad
                           {sinStock ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
                               <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
-                              Agotado (0 g)
+                              Agotado
                             </span>
                           ) : bajoStock ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200">
