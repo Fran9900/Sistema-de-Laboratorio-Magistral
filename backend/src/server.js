@@ -11,10 +11,10 @@ import principioActivoRoutes from './routes/principioActivo.routes.js';
 import clienteRoutes from './routes/cliente.routes.js';
 import { setupSwagger } from './config/swagger.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,7 +32,7 @@ app.use('/api/principiosActivos', principioActivoRoutes);
 app.use('/api/clientes', clienteRoutes);
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, async (err) => {
+  app.listen(PORT, '0.0.0.0', async (err) => {
     if (err) {
       console.error(err.message);
       process.exit(1);
@@ -40,10 +40,9 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Backend http://localhost:${PORT}`);
     try {
       await db.sequelize.authenticate();
-      await db.sequelize.sync({ alter: true });
       console.log('Conexion con MySQL establecida.');
     } catch (dbError) {
-      console.warn(`MySQL offline (127.0.0.1:3306). El servidor continuara en ejecucion. Detalle: ${dbError.message}`);
+      console.warn(`MySQL offline (${process.env.DB_HOST || '127.0.0.1'}:${process.env.DB_PORT || 3306}). El servidor continuara en ejecucion. Detalle: ${dbError.message}`);
     }
   });
 }
