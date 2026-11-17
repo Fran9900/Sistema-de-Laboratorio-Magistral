@@ -38,11 +38,21 @@ if (process.env.NODE_ENV !== 'test') {
       process.exit(1);
     }
     console.log(`Backend http://localhost:${PORT}`);
-    try {
-      await db.sequelize.authenticate();
-      console.log('Conexion con MySQL establecida.');
-    } catch (dbError) {
-      console.warn(`MySQL offline (${process.env.DB_HOST || '127.0.0.1'}:${process.env.DB_PORT || 3306}). El servidor continuara en ejecucion. Detalle: ${dbError.message}`);
+    let connected = false;
+    for (let attempt = 1; attempt <= 15; attempt++) {
+      try {
+        await db.sequelize.authenticate();
+        console.log('Conexion con MySQL establecida exitosamente.');
+        connected = true;
+        break;
+      } catch (dbError) {
+        if (attempt < 15) {
+          console.log(`Esperando inicializacion de Base de Datos (intento ${attempt}/15)...`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        } else {
+          console.warn(`MySQL offline (${process.env.DB_HOST || '127.0.0.1'}:${process.env.DB_PORT || 3306}). Detalle: ${dbError.message}`);
+        }
+      }
     }
   });
 }

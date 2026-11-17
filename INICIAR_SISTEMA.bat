@@ -25,22 +25,47 @@ if exist "%ROOT_DIR%\runtime\node\node.exe" (
 echo.
 
 echo [2/5] Configurando motor de Base de Datos...
-set DB_PORT=3306
 
-netstat -ano | findstr /R /C:":3306 .*LISTENING" >nul
+tasklist /fi "imagename eq mariadbd.exe" 2>nul | findstr /i "mariadbd.exe" >nul
 if %ERRORLEVEL% EQU 0 (
-    echo [*] Puerto 3306 ocupado en el host. Asignando puerto 3307...
+    echo [*] Limpiando instancia previa del motor portable...
+    taskkill /f /im mariadbd.exe >nul 2>&1
+    ping -n 3 127.0.0.1 >nul
+)
+
+set DB_PORT=3306
+netstat -ano -p tcp | findstr /R /C:":3306 .*LISTENING" >nul
+if %ERRORLEVEL% EQU 0 (
+    echo [*] Puerto 3306 ocupado por servicio del host. Asignando puerto 3307...
     set DB_PORT=3307
 )
 
-if exist "%ROOT_DIR%\runtime\mariadb\bin\mariadbd.exe" (
-    echo [*] Levantando motor MariaDB portable en puerto %DB_PORT%...
-    start "Laboratorio Magistral - Motor DB [%DB_PORT%]" /D "%ROOT_DIR%\runtime\mariadb" /min "%ROOT_DIR%\runtime\mariadb\bin\mariadbd.exe" --port=%DB_PORT% --console
-    ping -n 4 127.0.0.1 >nul
-    echo [OK] Motor de Base de Datos iniciado en puerto %DB_PORT%.
-) else (
+if not exist "%ROOT_DIR%\runtime\mariadb\bin\mariadbd.exe" (
     echo [AVISO] No se encontro runtime\mariadb. Conectando a servicio en puerto %DB_PORT%...
+    goto SKIP_MARIADB
 )
+
+echo [*] Levantando motor MariaDB portable en puerto %DB_PORT%...
+start "Laboratorio Magistral - Motor DB [%DB_PORT%]" /D "%ROOT_DIR%\runtime\mariadb" /min "%ROOT_DIR%\runtime\mariadb\bin\mariadbd.exe" --no-defaults --datadir="%ROOT_DIR%\runtime\mariadb\data" --bind-address=0.0.0.0 --port=%DB_PORT% --console
+
+echo [*] Esperando que la base de datos este lista en puerto %DB_PORT%...
+set DB_RETRIES=0
+:WAIT_DB
+netstat -ano -p tcp | findstr /R /C:":%DB_PORT% .*LISTENING" >nul
+if %ERRORLEVEL% EQU 0 (
+    echo [OK] Motor de Base de Datos activo y respondiendo en puerto %DB_PORT%.
+    goto DB_READY
+)
+set /a DB_RETRIES+=1
+if %DB_RETRIES% GEQ 20 (
+    echo [AVISO] Tiempo de espera agotado. Continuando arranque...
+    goto DB_READY
+)
+ping -n 2 127.0.0.1 >nul
+goto WAIT_DB
+
+:DB_READY
+:SKIP_MARIADB
 echo.
 
 echo [3/5] Detectando direccion IP de la red local...
